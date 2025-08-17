@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>11c1ff19-a890-49a2-8a34-7ca0f06e3188</UserSecretsId>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <DockerComposeProjectPath>..\docker-compose.dcproj</DockerComposeProjectPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="IdentityServer4Auth.pfx" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="IdentityServer4Auth.pfx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Duende.IdentityServer" Version="7.3.1" />
+    <PackageReference Include="Duende.IdentityServer.AspNetIdentity" Version="7.3.1" />
+    <PackageReference Include="Duende.IdentityServer.EntityFramework" Version="7.3.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="9.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="9.0.8" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="AutoMapper" Version="15.0.1" />
+    <PackageReference Include="Stripe.net" Version="48.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RentConnect.Models\RentConnect.Models.csproj" />
+    <ProjectReference Include="..\RentConnect.Services\RentConnect.Services.csproj" />
+  </ItemGroup>
+
+</Project>

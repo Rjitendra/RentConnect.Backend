@@ -1,0 +1,31 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no" />
+    <title>Lordhood</title>
+
+    <link rel="icon" type="image/x-icon" href="~/home.png" />
+    <link rel="shortcut icon" type="image/x-icon" href="~/home.png" />
+    <link rel="stylesheet" href="~/libs/bootstrap//bootstrap.min.css" />
+    <link rel="stylesheet" href="~/libs/jquery//jquery-ui.css">
+    <link rel="stylesheet" href="~/libs/font-awesome/all.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+
+    <script src="~/libs/jquery//jquery.min.js"></script>
+    <script src="~/libs/jquery/jquery-ui.min.js"></script>
+    <script src="~/libs/bootstrap/bootstrap.bundle.min.js"></script>
+    <script src="~/customjs/custom.js"></script>
+
+</head>
+<body>
+    <partial name="_Nav" />
+
+    <div class="container body-container">
+        @RenderBody()
+    </div>
+
+    @RenderSection("scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,115 @@
+﻿@model RegistrationViewModel
+
+<h1 class="page-header">Registration</h1>
+<hr class="divider" />
+
+<partial name="_ValidationSummary" />
+<form method="post" autocomplete="off" novalidate enctype="multipart/form-data">
+    <div class="row form-group ">
+        <div class="col-sm-6">
+            <label class="lable_font" asp-for="FirstName"></label>
+            <input asp-for="@Model.FirstName" class="form-control" placeholder="Enter your first name..." />
+            <span asp-validation-for="@Model.FirstName" class="text-danger"></span>
+        </div>
+        <div class="col-sm-6">
+            <label class="lable_font" asp-for="LastName"></label>
+            <input asp-for="@Model.LastName" class="form-control" placeholder="Enter your last name..." />
+            <span asp-validation-for="@Model.LastName" class="text-danger"></span>
+        </div>
+        <div class="col-sm-6">
+            <label class="lable_font" asp-for="Email"></label>
+            <input asp-for="@Model.Email" class="form-control" placeholder="Enter your email..." />
+            <span asp-validation-for="@Model.Email" class="text-danger"></span>
+        </div>
+        <div class="col-sm-6">
+            <label class="lable_font" asp-for="PhoneNumber"></label>
+            <div class="input-group">
+                <div class="input-group-prepend">
+                    <select id="countryCode" asp-for="@Model.CountryCode" class="form-control" data-container="body">
+                        <option value="+1">+1 (USA)</option>
+                        <option selected value="+44">+44 (UK)</option>
+                        <option value="+91">+91 (India)</option>
+                        <option value="+61">+61 (Australia)</option>
+                        <option value="+55">+55 (Brazil)</option>
+                        <option value="+86">+86 (China)</option>
+                        <option value="+33">+33 (France)</option>
+                        <option value="+49">+49 (Germany)</option>
+                        <option value="+81">+81 (Japan)</option>
+                        <option value="+52">+52 (Mexico)</option>
+                        <option value="+7">+7 (Russia)</option>
+                        <option value="+27">+27 (South Africa)</option>
+                        <option value="+34">+34 (Spain)</option>
+                        <option value="+41">+41 (Switzerland)</option>
+
+
+                    </select>
+                </div>
+                <input asp-for="@Model.PhoneNumber" class="form-control" placeholder="Enter your mobile Number..." />
+            </div>
+            <span asp-validation-for="@Model.PhoneNumber" class="text-danger"></span>
+        </div>
+
+        <div class="col-sm-6">
+            <label class="lable_font" asp-for="Address"></label>
+            <input asp-for="@Model.Address" class="form-control" placeholder="Enter your Address..." id="searchBox" />
+            <div class="loader"></div>
+            <span asp-validation-for="@Model.Address" class="text-danger"></span>
+        </div>
+        <div class="col-sm-6">
+            <label class="lable_font" asp-for="Postcode"></label>
+            <input asp-for="@Model.Postcode" class="form-control"  id="postcode" />
+            <span asp-validation-for="@Model.Postcode" class="text-danger"></span>
+        </div>
+        <div class="col-sm-6">
+            <label class="lable_font" asp-for="Password"></label>
+            <input asp-for="@Model.Password" class="form-control" placeholder="Enter your password..." />
+            <span asp-validation-for="@Model.Password" class="text-danger"></span>
+        </div>
+        <div class="col-sm-6">
+            <div class="form-group">
+                <label class="lable_font" asp-for="ConfirmPassword"></label>
+                <input asp-for="@Model.ConfirmPassword" class="form-control" placeholder="Enter your password again..." />
+                <span asp-validation-for="@Model.ConfirmPassword" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-sm-6">
+            <label class="lable_font" asp-for="UploadAddressProof"></label>
+            <input asp-for="@Model.UploadAddressProof" class="form-control" />
+            <span asp-validation-for="@Model.UploadAddressProof" class="text-danger"></span>
+        </div>
+        <div class="col-sm-6">
+            <label class="lable_font" asp-for="UploadIdProof"></label>
+            <input asp-for="@Model.UploadIdProof" class="form-control" />
+            <span asp-validation-for="@Model.UploadIdProof" class="text-danger"></span>
+        </div>
+        <div class="col-sm-6 mt-3">
+
+
+            <div class="form-group">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="termsCheckbox" asp-for="@Model.AcceptTerms" />
+                    <label class="form-check-label" for="termsCheckbox">
+                        I agree to the <a href="javascript:void(0)" id="termsLink" target="_blank">Terms and Conditions</a>
+                    </label>
+                </div>
+                <span asp-validation-for="@Model.AcceptTerms" class="text-danger"></span>
+            </div>
+
+
+        </div>
+    </div>
+    <div class="row d-flex justify-content-center pt-4">
+
+        <button type="submit" class="btn btn-success mr-1">Register</button>
+        <a asp-action="login" class="btn btn-secondary" formnovalidate>Cancel</a>
+    </div>
+    <div class="form-group">
+    </div>
+
+</form>
+
+
+
+
+
+

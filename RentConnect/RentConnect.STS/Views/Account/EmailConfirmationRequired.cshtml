@@ -1,0 +1,24 @@
+﻿@model ForgotPasswordViewModel
+
+<div class="page-header text-center">
+    <h3>Email Confirmation Required</h3>
+</div>
+
+<div class="row">
+    <div class="col-sm-6 mx-auto">
+        <div class="login-page bg-light">
+            <p>Your email address has not been confirmed yet. Please check your email and follow the instructions to confirm your email address.</p>
+            <p>If you haven't received the confirmation email, you can request a new one. Enter your registered email and click submit.</p>
+            <form method="post">
+                <partial name="_ValidationSummary" />
+                <div class="input-group">
+                    <input asp-for="Email" class="form-control mr-1" placeholder="Enter your registered email..." />
+                    <span class="input-group-btn">
+                        <button class="btn btn-success mr-2" type="submit">Submit</button>
+                    </span>
+                </div>
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </form>
+        </div>
+    </div>
+</div>

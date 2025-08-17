@@ -1,0 +1,12 @@
+﻿@model PaymentRequest
+
+<div class="jumbotron alert alert-danger">
+    <p><h6>Looks like your trial period is over. Renew now to continue using the Lordhood services!</h6></p>
+    <form method="post">
+        <input type="hidden" name="amount" value="40">
+        <input type="hidden" name="landlorId" value="@Model.landlorId">
+        <div class="d-flex justify-content-center mt-3">
+            <button type="submit" class="btn btn-primary">Renew - £40</button>
+        </div>
+    </form>
+</div>

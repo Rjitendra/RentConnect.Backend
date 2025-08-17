@@ -1,0 +1,26 @@
+﻿@model SearchViewModel
+
+
+<div class="page-header text-center">
+    <h3>Search Accounts</h3>
+</div>
+
+<partial name="_ValidationSummary" />
+
+<div class="row">
+    <div class="col-sm-6 mx-auto">
+        <div class="login-page bg-light">
+            <p class="help-block">Search for a user by email address.</p>
+
+            <form method="post" autocomplete="off">
+                <div class="input-group">
+                    <input asp-for="@Model.Email" class="form-control" placeholder="Enter an email..." />
+                    <span class="input-group-btn">
+                        <button class="btn btn-success" type="submit">Search</button>
+                    </span>
+                </div>
+                <span asp-validation-for="@Model.Email" class="text-danger"></span>
+            </form>
+        </div>
+    </div>
+</div>

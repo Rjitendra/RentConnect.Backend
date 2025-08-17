@@ -1,0 +1,86 @@
+﻿.welcome-page .logo {
+    width: 64px;
+}
+
+.icon-banner {
+    width: 45px;
+}
+
+.body-container {
+    margin-top: 60px;
+    padding-bottom: 40px;
+}
+
+.welcome-page li {
+    list-style: none;
+    padding: 4px;
+}
+
+.logged-out-page iframe {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.grants-page .card {
+    margin-top: 20px;
+    border-bottom: 1px solid lightgray;
+}
+
+    .grants-page .card .card-title {
+        font-size: 120%;
+        font-weight: bold;
+    }
+
+        .grants-page .card .card-title img {
+            width: 100px;
+            height: 100px;
+        }
+
+    .grants-page .card label {
+        font-weight: bold;
+    }
+
+.lordhood_icon {
+    width: 30%;
+}
+
+.width_300 {
+    width: 200px;
+}
+
+.lable_font {
+    font-weight: bold;
+    font-size: 15px;
+}
+
+.bg-background {
+    background-color: #40ad6c !important;
+}
+
+/*.search-box {
+    position: relative;
+    padding-right: 40px;*/ /* adjust the padding to the width of the loader */
+/*}
+
+.loader {
+    display: none;*/ /* hide the loader by default */
+/*position: absolute;
+    right: 10px;*/ /* adjust the position of the loader */
+/*top: 50%;*/ /* adjust the position of the loader */
+/*transform: translateY(-50%);*/ /* adjust the position of the loader */
+/*width: 20px;*/ /* adjust the size of the loader */
+/*height: 20px;*/ /* adjust the size of the loader */
+/*background-image: url('~/spinner.svg');*/ /* replace with the path to your loader image */
+/*background-size: cover;
+}
+
+.search-box.loading .loader {
+    display: block;*/ /* show the loader when the textbox has the "loading" class */
+/*}*/
+.address-loader {
+    background-image: url('../spinner.svg');
+    background-repeat: no-repeat;
+    background-position: right center;
+    background-size: 55px 55px;
+}
