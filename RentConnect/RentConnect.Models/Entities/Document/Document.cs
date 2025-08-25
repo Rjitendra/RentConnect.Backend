@@ -1,5 +1,6 @@
 ﻿namespace RentConnect.Models.Entities.Documents
 {
+    using Microsoft.AspNetCore.Http;
     using RentConnect.Models.Enums;
 
     public class Document : BaseEntity
@@ -7,12 +8,19 @@
         public long OwnerId { get; set; } // Landlord/Tenant ID
         public string OwnerType { get; set; } // "Landlord" or "Tenant"
 
-        public DocumentType DocumentType { get; set; } // Enum for Aadhaar, Photo, RentalAgreement, etc.
-        public string FileUrl { get; set; }
+        public DocumentCategory Category { get; set; } // Enum for Aadhaar, Photo, RentalAgreement, etc.
+                                                   // File metadata
+        public IFormFile? File { get; set; }   // For uploaded file (ASP.NET Core)
+        public string? Name { get; set; }
+        public long? Size { get; set; }
+        public string? Type { get; set; }
+        public string? Url { get; set; }  // For preview
 
-        public string DocumentIdentifier { get; set; } = string.Empty; // Unique identifier for the document, if applicable
-        public DateTime UploadedOn { get; set; } = DateTime.UtcNow;
-        public bool IsVerified { get; set; } = false; // Default to false, can be updated later
-        public string VerifiedBy { get; set; } = string.Empty;
+        // Document metadata
+        public string? DocumentIdentifier { get; set; }  // Unique identifier
+        public string? UploadedOn { get; set; } = DateTime.UtcNow.ToString("o"); // ISO format
+        public bool IsVerified { get; set; } = true; // Default false
+        public string? VerifiedBy { get; set; } = string.Empty; // Default empty
+        public string? Description { get; set; } = string.Empty; // Default empty
     }
 }

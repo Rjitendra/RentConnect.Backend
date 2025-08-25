@@ -1,16 +1,16 @@
-﻿namespace RentConnect.Models.Entities.Properties
+﻿
+
+
+namespace RentConnect.Models.Dtos.Properties
 {
-    using RentConnect.Models.Entities.Documents;
+    using RentConnect.Models.Dtos.Document;
     using RentConnect.Models.Entities.Landlords;
     using RentConnect.Models.Entities.Tenants;
     using RentConnect.Models.Enums;
-
-    public class Property : BaseEntity
+    public class PropertyDto
     {
-        // ✅ Relationship to Landlord (1 Landlord → Many Properties)
+        // ✅ Relationship to Landlord(1 Landlord → Many Properties)
         public long LandlordId { get; set; }
-        public virtual Landlord Landlord { get; set; }
-
         // ✅ Relationship to Tenants (1 Property → Many Tenants)
         public ICollection<Tenant> Tenants { get; set; } = new List<Tenant>();
 
@@ -63,6 +63,6 @@
         public DateTime? UpdatedOn { get; set; }
 
         // Navigation - Generic document link
-        public ICollection<Document> Documents { get; set; } = new List<Document>();
+        public IList<DocumentUploadDto> Documents { get; set; } = new List<DocumentUploadDto>();
     }
 }

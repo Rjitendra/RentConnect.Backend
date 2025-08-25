@@ -2,9 +2,7 @@
     width: 64px;
 }
 
-.icon-banner {
-    width: 45px;
-}
+
 
 .body-container {
     margin-top: 60px;
@@ -55,7 +53,9 @@
 }
 
 .bg-background {
-    background-color: #40ad6c !important;
+    background: linear-gradient(90deg, #1e3c72, #2a5298) !important; /* Blue gradient */
+    padding: 0.7rem 1.5rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
 /*.search-box {
@@ -78,9 +78,56 @@
 .search-box.loading .loader {
     display: block;*/ /* show the loader when the textbox has the "loading" class */
 /*}*/
-.address-loader {
-    background-image: url('../spinner.svg');
-    background-repeat: no-repeat;
-    background-position: right center;
-    background-size: 55px 55px;
+.custom-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
 }
+
+.icon-banner {
+    height: 40px;
+    width: auto;
+}
+
+.brand-text {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #fff;
+}
+
+.navbar-nav .nav-link {
+    color: #f1f1f1 !important;
+    font-weight: 500;
+}
+
+    .navbar-nav .nav-link:hover {
+        color: #ffd700 !important; /* gold hover */
+    }
+
+.dropdown-menu {
+    border-radius: 8px;
+    overflow: hidden;
+}
+.btn-custom-save {
+    background-color: #007bff; /* Primary Blue */
+    border: none;
+    color: #fff;
+   
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+   
+
+.btn-custom-cancel {
+    background-color: #dc3545; /* Red for cancel */
+    border: none;
+    color: #fff;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+    

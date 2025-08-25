@@ -492,27 +492,27 @@
                 await this.ApiContext.Landlord.AddAsync(landlord);
                 await this.ApiContext.SaveChangesAsync();
 
-                var documentDtos = new List<DocumentUploadItemDto>();
+                var documentDtos = new List<DocumentUploadDto>();
 
                 if (model.UploadAddressProof != null)
                 {
-                    documentDtos.Add(new DocumentUploadItemDto
+                    documentDtos.Add(new DocumentUploadDto
                     {
                         File = model.UploadAddressProof,
                         OwnerId = landlord.Id,
                         OwnerType = "Landlord",
-                        DocumentType = DocumentType.AddressProof
+                        Category = DocumentCategory.AddressProof
                     });
                 }
 
                 if (model.UploadIdProof != null)
                 {
-                    documentDtos.Add(new DocumentUploadItemDto
+                    documentDtos.Add(new DocumentUploadDto
                     {
                         File = model.UploadIdProof,
                         OwnerId = landlord.Id,
                         OwnerType = "Landlord",
-                        DocumentType = DocumentType.IdProof
+                        Category = DocumentCategory.IdProof
                     });
                 }
                 // Call Web API for multiple files
@@ -682,24 +682,24 @@
                 await this.ApiContext.SaveChangesAsync();
 
                 // 4. Prepare documents
-                var documentDtos = new List<DocumentUploadItemDto>();
+                var documentDtos = new List<DocumentUploadDto>();
 
                 if (model.UploadAddressProof != null)
-                    documentDtos.Add(new DocumentUploadItemDto
+                    documentDtos.Add(new DocumentUploadDto
                     {
                         File = model.UploadAddressProof,
                         OwnerId = landlord.Id,
                         OwnerType = "Landlord",
-                        DocumentType = DocumentType.AddressProof
+                        Category = DocumentCategory.AddressProof
                     });
 
                 if (model.UploadIdProof != null)
-                    documentDtos.Add(new DocumentUploadItemDto
+                    documentDtos.Add(new DocumentUploadDto
                     {
                         File = model.UploadIdProof,
                         OwnerId = landlord.Id,
                         OwnerType = "Landlord",
-                        DocumentType = DocumentType.IdProof
+                        Category = DocumentCategory.IdProof
                     });
 
                 // 5. Upload documents
@@ -1149,7 +1149,7 @@
             return false;
         }
 
-        private async Task<bool> UploadAllDocumentsAsync(List<DocumentUploadItemDto> documents)
+        private async Task<bool> UploadAllDocumentsAsync(List<DocumentUploadDto> documents)
         {
             if (documents == null || !documents.Any())
                 return false;
@@ -1178,7 +1178,7 @@
                     content.Add(fileContent, $"Documents[{i}].File", doc.File.FileName);
                     content.Add(new StringContent(doc.OwnerId.ToString()), $"Documents[{i}].OwnerId");
                     content.Add(new StringContent(doc.OwnerType), $"Documents[{i}].OwnerType");
-                    content.Add(new StringContent(((int)doc.DocumentType).ToString()), $"Documents[{i}].DocumentType");
+                    content.Add(new StringContent(((int)doc.Category).ToString()), $"Documents[{i}].DocumentType");
                 }
 
                 var apiUrl = "http://localhost:6001/api/Document/upload";

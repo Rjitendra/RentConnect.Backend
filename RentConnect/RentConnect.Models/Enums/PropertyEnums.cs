@@ -31,7 +31,7 @@
         Archived
     }
 
-    public enum DocumentType
+    public enum DocumentCategory
     {
         Aadhaar,
         PAN,
@@ -39,7 +39,7 @@
         UtilityBill,
         NoObjectionCertificate,
         BankProof,
-        PropertyPhoto,
+        PropertyImages,
         RentalAgreement,
         AddressProof,
         IdProof,

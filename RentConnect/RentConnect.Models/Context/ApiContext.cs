@@ -5,6 +5,7 @@
     using RentConnect.Models.Entities;
     using RentConnect.Models.Entities.Documents;
     using RentConnect.Models.Entities.Landlords;
+    using RentConnect.Models.Entities.Payments;
     using RentConnect.Models.Entities.Properties;
     using RentConnect.Models.Entities.Tenants;
     using RentConnect.Models.Entities.TicketTracking;
@@ -30,6 +31,10 @@
         public virtual DbSet<TicketStatus> TicketStatus { get; set; }
 
         public virtual DbSet<TenantChildren> TenantChildren { get; set; } // no where we featch Tenant children to show in ui ,it will keep record for who are below 18 year,if future require to make relationship with Tenant then add  TenantChildren as property and make foreginkey rleationship to tenantgroup id
+        public virtual DbSet<RentPayment> RentPayment { get; set; }
+        public virtual DbSet<RentLatePaymentCharge> RentLatePaymentCharge { get; set; }
+        public virtual DbSet<RentPaymentHistory> RentPaymentHistory { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -39,7 +44,7 @@
             // Let Identity configure itself
             base.OnModelCreating(modelBuilder);
 
-            // ✅ Map your custom entities
+            // ✅ Map custom entities
             modelBuilder.Entity<Landlord>().ToTable("Landlord", "dbo");
             modelBuilder.Entity<Property>().ToTable("Property", "dbo");
             modelBuilder.Entity<Document>().ToTable("Document", "dbo");
@@ -47,73 +52,74 @@
             modelBuilder.Entity<Ticket>().ToTable("Ticket", "dbo");
             modelBuilder.Entity<TicketStatus>().ToTable("TicketStatus", "dbo");
             modelBuilder.Entity<TenantChildren>().ToTable("TenantChildren", "dbo");
+            modelBuilder.Entity<RentPayment>().ToTable("RentPayment", "dbo");
+            modelBuilder.Entity<RentLatePaymentCharge>().ToTable("RentLatePaymentCharge", "dbo");
+            modelBuilder.Entity<RentPaymentHistory>().ToTable("RentPaymentHistory", "dbo");
 
-            // Relationships
+            // -------------------------
+            // 🔗 Relationships
+            // -------------------------
 
-            // Landlord → Property
+            // Landlord → Property (1:N)
             modelBuilder.Entity<Property>()
                 .HasOne(p => p.Landlord)
                 .WithMany(l => l.Properties)
                 .HasForeignKey(p => p.LandlordId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Landlord → Documents (polymorphic, no FK)
-            modelBuilder.Entity<Landlord>()
-                .Ignore(l => l.Documents);
-
-            // Property → Documents (polymorphic, no FK)
-            modelBuilder.Entity<Property>()
-                .Ignore(p => p.Documents);
-
-            // Document → Owner (polymorphic)
-            modelBuilder.Entity<Document>()
-                .HasKey(d => d.Id);
-
+            // Landlord → Tenant (1:N)
             modelBuilder.Entity<Tenant>()
-                    .HasOne(a => a.User)
-                    .WithMany()
-                    .HasPrincipalKey(x => x.Id)
-                    .HasForeignKey(c => c.Id);
+                .HasOne(t => t.Landlord)
+                .WithMany(l => l.Tenants)
+                .HasForeignKey(t => t.LandlordId)
+                .OnDelete(DeleteBehavior.Cascade);
 
+            // Property → Tenant (1:N)
             modelBuilder.Entity<Tenant>()
-               .HasOne(a => a.Property)
-               .WithMany()
-               .HasPrincipalKey(x => new { x.Id, x.Landlord })
-               .HasForeignKey(c => new { c.PropertyId, c.LandLordId });
+                .HasOne(t => t.Property)
+                .WithMany(p => p.Tenants)
+                .HasForeignKey(t => t.PropertyId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-            // Property → Documents (polymorphic, no FK)
-            modelBuilder.Entity<Tenant>()
-                .Ignore(p => p.Documents);
-
+            // Tenant → Tickets (1:N)
             modelBuilder.Entity<Ticket>()
-                     .HasMany(a => a.Status)
-                     .WithOne()
-                     .HasPrincipalKey(x => x.Id)
-                     .HasForeignKey(c => c.TicketId);
+                .HasOne(t => t.Tenant)
+                .WithMany(te => te.Tickets)
+                .HasForeignKey(t => t.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
 
+            // Ticket → Status (1:N)
             modelBuilder.Entity<Ticket>()
-               .HasOne(a => a.Tenant)
-               .WithMany()
-               .HasPrincipalKey(x => x.Id)
-               .HasForeignKey(c => c.TenantId);
+                .HasMany(a => a.Status)
+                .WithOne()
+                .HasForeignKey(c => c.TicketId);
 
+            // Ticket → Property (Many-to-1)
             modelBuilder.Entity<Ticket>()
-              .HasOne(a => a.Property)
-              .WithMany()
-              .HasPrincipalKey(x => x.Id)
-              .HasForeignKey(c => c.PropertyId);
+                .HasOne(a => a.Property)
+                .WithMany()
+                .HasForeignKey(c => c.PropertyId);
 
+            // ApplicationUser → Roles
             modelBuilder.Entity<ApplicationUser>()
-                        .HasMany(x => x.Roles)
-                        .WithOne()
-                        .HasPrincipalKey(x => x.Id)
-                        .HasForeignKey(ur => ur.UserId);
+                .HasMany(x => x.Roles)
+                .WithOne()
+                .HasForeignKey(ur => ur.UserId);
 
+            // ApplicationUser → Claims
             modelBuilder.Entity<ApplicationUser>()
                 .HasMany(x => x.Claims)
                 .WithOne()
-                .HasPrincipalKey(x => x.Id)
                 .HasForeignKey(ur => ur.UserId);
+
+            // -------------------------
+            // ⚠️ Documents (polymorphic)
+            // -------------------------
+            // If you don’t have a discriminator, you must ignore them here,
+            // OR later create a DocumentOwner table to normalize.
+            modelBuilder.Entity<Landlord>().Ignore(l => l.Documents);
+            modelBuilder.Entity<Property>().Ignore(p => p.Documents);
+            modelBuilder.Entity<Tenant>().Ignore(t => t.Documents);
         }
     }
 }

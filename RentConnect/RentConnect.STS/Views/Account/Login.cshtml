@@ -1,49 +1,60 @@
 ﻿@model LoginViewModel
 
 <div class="page-header text-center">
+    <h2>Login</h2>
 </div>
 
 <partial name="_ValidationSummary" />
 
 <div class="row">
     <div class="col-md-6 mx-auto">
-        <div class="login-page bg-light">
+        <div class="login-page bg-light p-4 rounded shadow-sm">
+
             @if (Model.EnableLocalLogin)
             {
-                <form asp-route="Login">
-                    <div class="form-group">
-                        <i class="fa fa-user"></i> <label asp-for="Username"></label>
-                        <input class="form-control" placeholder="Email" asp-for="Username" autofocus>
+                <form asp-route="Login" method="post">
+                    <div class="form-group mb-3">
+                        <label asp-for="Username" class="form-label"></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa fa-user"></i></span>
+                            <input class="form-control" placeholder="Email" asp-for="Username" autofocus />
+                        </div>
+                        <span asp-validation-for="Username" class="text-danger"></span>
                     </div>
-                    <div class="form-group">
-                        <i class="fa fa-lock"></i> <label asp-for="Password"></label>
-                        <input type="password" class="form-control" placeholder="Password" asp-for="Password" autocomplete="off">
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Password" class="form-label"></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa fa-lock"></i></span>
+                            <input type="password" class="form-control" placeholder="Password" asp-for="Password" autocomplete="off" />
+                        </div>
+                        <span asp-validation-for="Password" class="text-danger"></span>
+                        <div class="mt-1">
+                            <a asp-action="ForgotPassword" class="small">Forgot your password?</a>
+                        </div>
                     </div>
-                    <a class="pb-4 pull-right" asp-action="forgotPassword">Reset Password?</a>
 
                     @if (Model.AllowRememberLogin)
                     {
-                        <div class="form-group login-remember">
-                            <label asp-for="RememberLogin">
-                                <input asp-for="RememberLogin">
-                                <strong>Remember My Login</strong>
+                        <div class="form-check mb-3">
+                            <input asp-for="RememberLogin" class="form-check-input" />
+                            <label asp-for="RememberLogin" class="form-check-label">
+                                Remember me
                             </label>
                         </div>
                     }
-
                     <div>
-                        <button class="btn btn-success" name="button" value="login">Login</button>
-                        <a asp-action="login" class="btn btn-secondary" formnovalidate>Cancel</a>
+                        <button class="btn btn-custom-save" name="button" value="login">Login</button>
+                        <a asp-action="login" class="btn btn-custom-cancel" formnovalidate>Cancel</a>
                     </div>
-                    <div class="row">
-                        <div class="col-6">
-                            <p class=" fw-bold mt-2 pt-1 mb-0">
-                                Don't have an account?
-                                @Html.ActionLink("Register", "Registration", "Account")
-                            </p>
-                        </div>
-                    </div>
+                    
 
+                    <div class="text-center">
+                        <p class="fw-bold mt-2 mb-0">
+                            Don’t have an account?
+                            @Html.ActionLink("Register", "Registration", "Account", null, new { @class = "text-decoration-none" })
+                        </p>
+                    </div>
                 </form>
             }
         </div>

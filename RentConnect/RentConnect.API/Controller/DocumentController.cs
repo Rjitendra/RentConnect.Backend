@@ -33,8 +33,8 @@
                     {
                         OwnerId = doc.OwnerId,
                         OwnerType = doc.OwnerType,
-                        DocumentType = doc.DocumentType,
-                        FileUrl = fileUrl,
+                        Category = doc.Category,
+                        Url = fileUrl,
                         // UploadedOn = DateTime.UtcNow,
                         // IsVerified = false,
                         // VerifiedBy = "jitendra"
