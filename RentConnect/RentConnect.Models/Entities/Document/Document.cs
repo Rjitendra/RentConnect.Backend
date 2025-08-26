@@ -10,8 +10,7 @@
 
         public DocumentCategory Category { get; set; } // Enum for Aadhaar, Photo, RentalAgreement, etc.
                                                    // File metadata
-        public IFormFile? File { get; set; }   // For uploaded file (ASP.NET Core)
-        public string? Name { get; set; }
+       public string? Name { get; set; }
         public long? Size { get; set; }
         public string? Type { get; set; }
         public string? Url { get; set; }  // For preview
