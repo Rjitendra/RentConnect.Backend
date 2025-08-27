@@ -253,15 +253,13 @@ namespace RentConnect.API.Migrations
                     b.Property<int?>("BaseVersionId")
                         .HasColumnType("int");
 
-                    b.Property<string>("DocumentIdentifier")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("DocumentType")
+                    b.Property<int>("Category")
                         .HasColumnType("int");
 
-                    b.Property<string>("FileUrl")
-                        .IsRequired()
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DocumentIdentifier")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsDeleted")
@@ -279,6 +277,9 @@ namespace RentConnect.API.Migrations
                     b.Property<bool>("IsVisible")
                         .HasColumnType("bit");
 
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<long>("OwnerId")
                         .HasColumnType("bigint");
 
@@ -289,8 +290,14 @@ namespace RentConnect.API.Migrations
                     b.Property<Guid>("PkId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<long?>("Size")
+                        .HasColumnType("bigint");
+
                     b.Property<int?>("StatusId")
                         .HasColumnType("int");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("UpdatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -298,11 +305,13 @@ namespace RentConnect.API.Migrations
                     b.Property<DateTime>("UpdatedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime>("UploadedOn")
-                        .HasColumnType("datetime2");
+                    b.Property<string>("UploadedOn")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Url")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("VerifiedBy")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("VersionId")
@@ -468,11 +477,11 @@ namespace RentConnect.API.Migrations
                     b.Property<DateTime?>("AvailableFrom")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("BHKConfiguration")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int?>("BaseVersionId")
                         .HasColumnType("int");
+
+                    b.Property<string>("BhkConfiguration")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<double?>("BuiltUpAreaSqFt")
                         .HasColumnType("float");
@@ -851,8 +860,8 @@ namespace RentConnect.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<int>("AddedBy")
-                        .HasColumnType("int");
+                    b.Property<long>("AddedBy")
+                        .HasColumnType("bigint");
 
                     b.Property<int?>("BaseVersionId")
                         .HasColumnType("int");

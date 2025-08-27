@@ -35,6 +35,11 @@
                         OwnerType = doc.OwnerType,
                         Category = doc.Category,
                         Url = fileUrl,
+                        Name = doc.File.FileName,
+                        Size = doc.File.Length,
+                        Type = doc.File.ContentType,
+                        Description = doc.Description,
+
                         // UploadedOn = DateTime.UtcNow,
                         // IsVerified = false,
                         // VerifiedBy = "jitendra"

@@ -72,12 +72,16 @@ namespace RentConnect.API.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     OwnerId = table.Column<long>(type: "bigint", nullable: false),
                     OwnerType = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    DocumentType = table.Column<int>(type: "int", nullable: false),
-                    FileUrl = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    DocumentIdentifier = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    UploadedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Category = table.Column<int>(type: "int", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Size = table.Column<long>(type: "bigint", nullable: true),
+                    Type = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Url = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    DocumentIdentifier = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    UploadedOn = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     IsVerified = table.Column<bool>(type: "bit", nullable: false),
-                    VerifiedBy = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    VerifiedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     PkId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     UpdatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -118,6 +122,60 @@ namespace RentConnect.API.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Landlord", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "RentLatePaymentCharge",
+                schema: "dbo",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    TenantId = table.Column<long>(type: "bigint", nullable: false),
+                    LatePaymentCharge = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    RentDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Note = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    DateCreated = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RentLatePaymentCharge", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "RentPayment",
+                schema: "dbo",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    PropertyId = table.Column<long>(type: "bigint", nullable: false),
+                    TenantId = table.Column<long>(type: "bigint", nullable: false),
+                    RentAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    RentDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    DateCreated = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RentPayment", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "RentPaymentHistory",
+                schema: "dbo",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    TenantId = table.Column<long>(type: "bigint", nullable: false),
+                    RentPaid = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    RentDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    PaymentMode = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    DateCreated = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RentPaymentHistory", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -266,7 +324,7 @@ namespace RentConnect.API.Migrations
                     Title = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     PropertyType = table.Column<int>(type: "int", nullable: true),
-                    BHKConfiguration = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    BhkConfiguration = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     FloorNumber = table.Column<int>(type: "int", nullable: true),
                     TotalFloors = table.Column<int>(type: "int", nullable: true),
                     CarpetAreaSqFt = table.Column<double>(type: "float", nullable: true),
@@ -448,7 +506,7 @@ namespace RentConnect.API.Migrations
                     TicketId = table.Column<long>(type: "bigint", nullable: false),
                     Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Comment = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    AddedBy = table.Column<int>(type: "int", nullable: false),
+                    AddedBy = table.Column<long>(type: "bigint", nullable: false),
                     DateModified = table.Column<DateTime>(type: "datetime2", nullable: true),
                     DateCreated = table.Column<DateTime>(type: "datetime2", nullable: false),
                     PkId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
@@ -588,6 +646,18 @@ namespace RentConnect.API.Migrations
 
             migrationBuilder.DropTable(
                 name: "Document",
+                schema: "dbo");
+
+            migrationBuilder.DropTable(
+                name: "RentLatePaymentCharge",
+                schema: "dbo");
+
+            migrationBuilder.DropTable(
+                name: "RentPayment",
+                schema: "dbo");
+
+            migrationBuilder.DropTable(
+                name: "RentPaymentHistory",
                 schema: "dbo");
 
             migrationBuilder.DropTable(

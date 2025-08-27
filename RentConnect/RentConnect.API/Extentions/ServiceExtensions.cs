@@ -1,11 +1,14 @@
-﻿namespace RentConnect.API.Extentions
+﻿using RentConnect.Services.Implementations;
+using RentConnect.Services.Interfaces;
+
+namespace RentConnect.API.Extentions
 {
     public static class ServiceExtensions
     {
         public static void ConfigureDIServices(this IServiceCollection services)
         {
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-            //services.AddTransient<IPropertyService, PropertyService>();
+            services.AddTransient<IPropertyService, PropertyService>();
             //services.AddTransient<ITenantService, TenantService>();
             //services.AddTransient<IUserService, UserService>();
             //services.AddTransient<ITicketService, TicketService>();

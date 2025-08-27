@@ -9,6 +9,7 @@ namespace RentConnect.Models.Dtos.Properties
     using RentConnect.Models.Enums;
     public class PropertyDto
     {
+        public long Id { get; set; }
         // ✅ Relationship to Landlord(1 Landlord → Many Properties)
         public long LandlordId { get; set; }
         // ✅ Relationship to Tenants (1 Property → Many Tenants)
