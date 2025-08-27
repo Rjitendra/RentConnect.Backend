@@ -17,7 +17,7 @@ namespace RentConnect.Services.Implementations
             _context = context;
         }
 
-        public async Task<Result<IEnumerable<PropertyDto>>> GetPropertyList(int landlordId)
+        public async Task<Result<IEnumerable<PropertyDto>>> GetPropertyList(long landlordId)
         {
             try
             {

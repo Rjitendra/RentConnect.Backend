@@ -5,7 +5,7 @@
     using RentConnect.Services.Utility;
     public interface IPropertyService
     {
-        Task<Result<IEnumerable<PropertyDto>>> GetPropertyList(int landlordId);
+        Task<Result<IEnumerable<PropertyDto>>> GetPropertyList(long landlordId);
 
         Task<Result<PropertyDto>> GetProperty(long id);
 

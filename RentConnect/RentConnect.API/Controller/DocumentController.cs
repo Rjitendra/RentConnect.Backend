@@ -18,7 +18,7 @@
         }
 
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadDocuments([FromForm] DocumentUploadRequestDto request)
+        public async Task<IActionResult> UploadDocuments([FromForm] DocumenDto request)
         {
             try
             {

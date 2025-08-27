@@ -12,12 +12,12 @@ namespace RentConnect.API.Controller
     public class PropertyController : BaseController
     {
         private readonly IPropertyService _propertyService;
-        private readonly DocumentController _documentController;
+        private readonly IDocumentService _documentService;
 
-        public PropertyController(IPropertyService propertyService, DocumentController documentController)
+        public PropertyController(IPropertyService propertyService, IDocumentService documentService)
         {
             _propertyService = propertyService;
-            _documentController = documentController;
+            _documentService = documentService;
         }
 
         /// <summary>
@@ -26,7 +26,7 @@ namespace RentConnect.API.Controller
         /// <param name="landlordId">The landlord ID</param>
         /// <returns>List of properties</returns>
         [HttpGet("landlord/{landlordId}")]
-        public async Task<IActionResult> GetPropertiesByLandlord(int landlordId)
+        public async Task<IActionResult> GetPropertiesByLandlord(long landlordId)
         {
             var result = await _propertyService.GetPropertyList(landlordId);
             return ProcessResult(result);
@@ -70,14 +70,14 @@ namespace RentConnect.API.Controller
                         {
                             File = d.File,
                             OwnerId = propertyId,
-                            OwnerType = "Property",
+                            OwnerType = "Landlord",
                             Category = d.Category,
                             Description = d.Description
                         }).ToList()
                     };
 
                     // Call document controller to upload files
-                    var documentResult = await _documentController.UploadDocuments(documentUploadRequest);
+                    var documentResult = await _documentService.UploadDocuments(documentUploadRequest);
 
                     // Note: Document upload failure won't fail the property creation
                     // You might want to log this or handle it differently based on business requirements
@@ -124,7 +124,7 @@ namespace RentConnect.API.Controller
                     };
 
                     // Call document controller to upload new files
-                    var documentResult = await _documentController.UploadDocuments(documentUploadRequest);
+                    var documentResult = await _documentService.UploadDocuments(documentUploadRequest);
                 }
 
                 return ProcessResult(propertyResult);
@@ -185,12 +185,12 @@ namespace RentConnect.API.Controller
                 foreach (var doc in request.Documents)
                 {
                     doc.OwnerId = propertyId;
-                    doc.OwnerType = "Property";
+                    doc.OwnerType = "Landlord";
                 }
 
                 // Upload documents using the document controller
-                var uploadResult = await _documentController.UploadDocuments(request);
-                return uploadResult;
+                var uploadResult = await _documentService.UploadDocuments(request);
+                return this.ProcessResult(uploadResult);
             }
             catch (Exception ex)
             {

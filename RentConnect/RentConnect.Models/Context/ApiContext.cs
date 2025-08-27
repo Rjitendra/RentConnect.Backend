@@ -100,6 +100,22 @@
                 .WithMany()
                 .HasForeignKey(c => c.PropertyId);
 
+
+            // Property → Document(1:N)
+            modelBuilder.Entity<Document>()
+                .HasOne(d => d.Property)
+                .WithMany(p => p.Documents)
+                .HasForeignKey(d => d.PropertyId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Tenant → Document (1:N)
+            modelBuilder.Entity<Document>()
+                .HasOne(d => d.Tenant)
+                .WithMany(t => t.Documents)
+                .HasForeignKey(d => d.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+
             // ApplicationUser → Roles
             modelBuilder.Entity<ApplicationUser>()
                 .HasMany(x => x.Roles)

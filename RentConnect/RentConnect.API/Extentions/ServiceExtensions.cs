@@ -1,4 +1,5 @@
-﻿using RentConnect.Services.Implementations;
+﻿using RentConnect.API.Controller;
+using RentConnect.Services.Implementations;
 using RentConnect.Services.Interfaces;
 
 namespace RentConnect.API.Extentions
@@ -9,6 +10,7 @@ namespace RentConnect.API.Extentions
         {
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
             services.AddTransient<IPropertyService, PropertyService>();
+            services.AddTransient<IDocumentService, DocumentService>();
             //services.AddTransient<ITenantService, TenantService>();
             //services.AddTransient<IUserService, UserService>();
             //services.AddTransient<ITicketService, TicketService>();
