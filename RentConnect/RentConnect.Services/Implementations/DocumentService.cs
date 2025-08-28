@@ -32,6 +32,9 @@
                     {
                         OwnerId = doc.OwnerId,
                         OwnerType = doc.OwnerType,
+                        PropertyId=doc.PropertyId,
+                        LandlordId=doc.LandlordId,
+                        TenantId=doc.TenantId,
                         Category = doc.Category,
                         Url = fileUrl,
                         Name = doc.File.FileName,

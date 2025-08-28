@@ -10,7 +10,10 @@
         [FromForm] public long OwnerId { get; set; }
         [FromForm] public string OwnerType { get; set; }
         [FromForm] public DocumentCategory Category { get; set; }
+        public long? LandlordId { get; set; }
+        public long? PropertyId { get; set; }
 
+        public long? TenantId { get; set; }
 
         public string? Name { get; set; }
         public long? Size { get; set; }

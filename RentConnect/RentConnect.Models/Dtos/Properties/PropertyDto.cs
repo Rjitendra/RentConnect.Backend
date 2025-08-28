@@ -24,7 +24,7 @@ namespace RentConnect.Models.Dtos.Properties
         public int? TotalFloors { get; set; }
         public double? CarpetAreaSqFt { get; set; }
         public double? BuiltUpAreaSqFt { get; set; }
-        public bool? IsFurnished { get; set; }
+        public bool IsFurnished { get; set; }
         public FurnishingType? FurnishingType { get; set; } // Enum: Unfurnished, SemiFurnished, FullyFurnished
         public int? NumberOfBathrooms { get; set; }
         public int? NumberOfBalconies { get; set; }

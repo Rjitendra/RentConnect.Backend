@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using RentConnect.Models.Context;
 using RentConnect.Models.Dtos.Properties;
+using RentConnect.Models.Entities.Landlords;
 using RentConnect.Models.Entities.Properties;
 using RentConnect.Models.Enums;
 using RentConnect.Services.Interfaces;
@@ -23,9 +24,14 @@ namespace RentConnect.Services.Implementations
             {
                 var properties = await _context.Property
                     .Where(p => p.LandlordId == landlordId)
-                    .Include(p => p.Documents)
                     .Include(p => p.Tenants)
                     .ToListAsync();
+                var documents = await this._context.Document.Where(x => x.OwnerId == landlordId).ToArrayAsync();
+
+                foreach (var property in properties)
+                {
+                    property.Documents = documents.Where(d => d.PropertyId == property.Id).ToList(); ;
+                }
 
                 var propertyDtos = properties.Select(MapToDto).ToList();
                 return Result<IEnumerable<PropertyDto>>.Success(propertyDtos);
@@ -41,13 +47,14 @@ namespace RentConnect.Services.Implementations
             try
             {
                 var property = await _context.Property
-                    .Include(p => p.Documents)
                     .Include(p => p.Tenants)
                     .FirstOrDefaultAsync(p => p.Id == id);
 
                 if (property == null)
                     return Result<PropertyDto>.Failure("Property not found");
 
+                var documents = await this._context.Document.Where(x => x.PropertyId == property.Id).ToArrayAsync();
+                property.Documents = documents;
                 var propertyDto = MapToDto(property);
                 return Result<PropertyDto>.Success(propertyDto);
             }
@@ -82,8 +89,7 @@ namespace RentConnect.Services.Implementations
             try
             {
                 var existingProperty = await _context.Property
-                    .Include(p => p.Documents)
-                    .Include(p => p.Tenants)
+                   .Include(p => p.Tenants)
                     .FirstOrDefaultAsync(p => p.Id == propertyDto.Id);
 
                 if (existingProperty == null)
@@ -204,7 +210,10 @@ namespace RentConnect.Services.Implementations
                     Category = d.Category,
                     Url = d.Url,
                     Name = Path.GetFileName(d.Url),
-                    DocumentIdentifier = d.Id.ToString()
+                    DocumentIdentifier = d.Id.ToString(),
+                    Size=d.Size,
+                    Type=d.Type
+                  
                 }).ToList() ?? new List<Models.Dtos.Document.DocumentUploadDto>()
             };
         }

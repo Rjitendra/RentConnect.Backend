@@ -277,6 +277,9 @@ namespace RentConnect.API.Migrations
                     b.Property<bool>("IsVisible")
                         .HasColumnType("bit");
 
+                    b.Property<long?>("LandlordId")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Name")
                         .HasColumnType("nvarchar(max)");
 
@@ -290,11 +293,17 @@ namespace RentConnect.API.Migrations
                     b.Property<Guid>("PkId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<long?>("PropertyId")
+                        .HasColumnType("bigint");
+
                     b.Property<long?>("Size")
                         .HasColumnType("bigint");
 
                     b.Property<int?>("StatusId")
                         .HasColumnType("int");
+
+                    b.Property<long?>("TenantId")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("Type")
                         .HasColumnType("nvarchar(max)");
