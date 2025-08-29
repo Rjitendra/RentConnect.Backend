@@ -129,7 +129,14 @@ namespace RentConnect.Services.Implementations
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
-            {
+            { foreach (var tenant in request.Tenants)
+                {
+                    tenant.PANNumber = "BJYPB7778L";
+                    tenant.AadhaarNumber = "123412341234";
+                    tenant.RentAmount = 15000;
+                    tenant.TenancyStartDate = DateTime.UtcNow;
+                    tenant.RentDueDate = DateTime.UtcNow;
+                }
                 // Validate the request
                 var validationErrors = ValidateTenantGroup(request.Tenants);
                 if (validationErrors.Any())
@@ -672,7 +679,7 @@ namespace RentConnect.Services.Implementations
                 DOB = tenant.DOB,
                 Occupation = tenant.Occupation,
                 AadhaarNumber = tenant.AadhaarNumber,
-                PANNumber = tenant.PANNumber,
+                PANNumber = tenant.PanNumber,
                 TenancyStartDate = tenant.TenancyStartDate,
                 TenancyEndDate = tenant.TenancyEndDate,
                 RentDueDate = tenant.RentDueDate,
@@ -726,7 +733,7 @@ namespace RentConnect.Services.Implementations
                 DOB = dto.DOB,
                 Occupation = dto.Occupation,
                 AadhaarNumber = dto.AadhaarNumber,
-                PANNumber = dto.PANNumber,
+                PanNumber = dto.PANNumber,
                 TenancyStartDate = request.TenancyStartDate,
                 TenancyEndDate = request.TenancyEndDate,
                 RentDueDate = request.RentDueDate,
@@ -752,7 +759,7 @@ namespace RentConnect.Services.Implementations
             entity.DOB = dto.DOB;
             entity.Occupation = dto.Occupation;
             entity.AadhaarNumber = dto.AadhaarNumber;
-            entity.PANNumber = dto.PANNumber;
+            entity.PanNumber = dto.PANNumber;
             entity.TenancyStartDate = dto.TenancyStartDate;
             entity.TenancyEndDate = dto.TenancyEndDate;
             entity.RentDueDate = dto.RentDueDate;

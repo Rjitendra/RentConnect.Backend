@@ -537,7 +537,7 @@ namespace RentConnect.API.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<bool?>("IsFurnished")
+                    b.Property<bool>("IsFurnished")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsLatestVersion")
@@ -639,11 +639,26 @@ namespace RentConnect.API.Migrations
                     b.Property<DateTime?>("AcknowledgeDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("AgreementDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool?>("AgreementSigned")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("AgreementUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AlternatePhoneNumber")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("BackgroundCheckFileUrl")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("BaseVersionId")
                         .HasColumnType("int");
+
+                    b.Property<string>("CurrentAddress")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("DOB")
                         .HasColumnType("datetime2");
@@ -657,7 +672,31 @@ namespace RentConnect.API.Migrations
                     b.Property<string>("DepositReceiptUrl")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("DrivingLicenseNumber")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmergencyContactName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmergencyContactPhone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmergencyContactRelation")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmployerAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmployerName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmployerPhone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Gender")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("IpAddress")
@@ -693,15 +732,45 @@ namespace RentConnect.API.Migrations
                     b.Property<long>("LandlordId")
                         .HasColumnType("bigint");
 
+                    b.Property<int?>("LeaseDuration")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("MaintenanceCharges")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("MaritalStatus")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("MonthlyIncome")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool?>("NeedsOnboarding")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("NoticePeriod")
+                        .HasColumnType("int");
 
                     b.Property<string>("Occupation")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("PANNumber")
+                    b.Property<bool?>("OnboardingCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("OnboardingEmailDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool?>("OnboardingEmailSent")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PanNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PermanentAddress")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PhoneNumber")
@@ -744,10 +813,19 @@ namespace RentConnect.API.Migrations
                     b.Property<DateTime>("UpdatedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<long>("UserId")
+                    b.Property<long?>("UserId")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("VerificationNotes")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int?>("VersionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("VoterIdNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("WorkExperience")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -1004,9 +1082,7 @@ namespace RentConnect.API.Migrations
 
                     b.HasOne("RentConnect.Models.Entities.ApplicationUser", "User")
                         .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("UserId");
 
                     b.Navigation("Landlord");
 

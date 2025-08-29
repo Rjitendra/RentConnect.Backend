@@ -41,8 +41,8 @@
         public string? EmployerName { get; set; }
         public string? EmployerAddress { get; set; }
         public string? EmployerPhone { get; set; }
-        public decimal MonthlyIncome { get; set; }
-        public int WorkExperience { get; set; }
+        public decimal? MonthlyIncome { get; set; }
+        public int? WorkExperience { get; set; }
 
         // Tenancy Details
         public DateTime TenancyStartDate { get; set; }
@@ -50,17 +50,17 @@
         public DateTime RentDueDate { get; set; }
         public decimal RentAmount { get; set; }
         public decimal SecurityDeposit { get; set; }
-        public decimal MaintenanceCharges { get; set; }
-        public int LeaseDuration { get; set; } = 12; // in months
-        public int NoticePeriod { get; set; } = 30; // in days
+        public decimal? MaintenanceCharges { get; set; }
+        public int? LeaseDuration { get; set; } = 12; // in months
+        public int? NoticePeriod { get; set; } = 30; // in days
 
         // Agreement & Onboarding
-        public bool AgreementSigned { get; set; }
+        public bool? AgreementSigned { get; set; }
         public DateTime? AgreementDate { get; set; }
         public string? AgreementUrl { get; set; }
-        public bool OnboardingEmailSent { get; set; }
+        public bool? OnboardingEmailSent { get; set; }
         public DateTime? OnboardingEmailDate { get; set; }
-        public bool OnboardingCompleted { get; set; }
+        public bool? OnboardingCompleted { get; set; }
 
         // File References
         public string? BackgroundCheckFileUrl { get; set; }
@@ -71,12 +71,13 @@
         public bool IsAcknowledge { get; set; }
         public DateTime? AcknowledgeDate { get; set; }
         public bool IsVerified { get; set; }
+        public string? VerificationNotes { get; set; }
 
         // Status Flags
         public bool IsNewTenant { get; set; } = true;
         public bool IsPrimary { get; set; }
         public bool IsActive { get; set; } = true;
-        public bool NeedsOnboarding { get; set; } = true;
+        public bool? NeedsOnboarding { get; set; } = true;
 
         // Grouping
         public int TenantGroup { get; set; }

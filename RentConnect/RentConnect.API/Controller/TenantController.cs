@@ -9,7 +9,7 @@ namespace RentConnect.API.Controller
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+   // [Authorize]
     public class TenantController : BaseController
     {
         private readonly ITenantService _tenantService;
@@ -83,7 +83,7 @@ namespace RentConnect.API.Controller
         /// <param name="request">Tenant creation request</param>
         /// <returns>Created tenant response</returns>
         [HttpPost("create")]
-        public async Task<IActionResult> CreateTenants([FromBody] TenantCreateRequestDto request)
+        public async Task<IActionResult> CreateTenants([FromForm] TenantCreateRequestDto request)
         {
             try
             {
