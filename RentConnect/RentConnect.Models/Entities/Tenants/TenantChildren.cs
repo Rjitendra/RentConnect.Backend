@@ -9,7 +9,7 @@
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public long Id { get; set; }
 
-        public int TenantGroupId { get; set; }
+        public string TenantGroupId { get; set; }
         public string Name { get; set; }
 
         public string? Email { get; set; }

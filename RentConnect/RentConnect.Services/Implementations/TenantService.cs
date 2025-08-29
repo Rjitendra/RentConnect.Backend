@@ -129,13 +129,15 @@ namespace RentConnect.Services.Implementations
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
-            { foreach (var tenant in request.Tenants)
+            {
+                foreach (var tenant in request.Tenants)
                 {
-                    tenant.PANNumber = "BJYPB7778L";
-                    tenant.AadhaarNumber = "123412341234";
-                    tenant.RentAmount = 15000;
-                    tenant.TenancyStartDate = DateTime.UtcNow;
-                    tenant.RentDueDate = DateTime.UtcNow;
+                    tenant.RentAmount = request.RentAmount;
+                    tenant.SecurityDeposit = request.SecurityDeposit;
+                    tenant.MaintenanceCharges = request.MaintenanceCharges;
+                    tenant.TenancyStartDate = request.TenancyStartDate;
+                    tenant.RentDueDate = request.RentDueDate;
+
                 }
                 // Validate the request
                 var validationErrors = ValidateTenantGroup(request.Tenants);
@@ -156,7 +158,7 @@ namespace RentConnect.Services.Implementations
                 }
 
                 // Generate a unique tenant group ID
-                var tenantGroupId = DateTime.UtcNow.Ticks;
+                var tenantGroupId = Guid.NewGuid().ToString();
 
                 var createdTenants = new List<TenantDto>();
 
@@ -164,7 +166,7 @@ namespace RentConnect.Services.Implementations
                 {
                     // Map to entity
                     var tenant = MapToEntity(tenantDto, request);
-                    tenant.TenantGroup = (int)tenantGroupId;
+                    tenant.TenantGroup = tenantGroupId; // reduce to int range
                     tenant.DateCreated = DateTime.UtcNow;
                     tenant.DateModified = DateTime.UtcNow;
 
@@ -573,10 +575,10 @@ namespace RentConnect.Services.Implementations
             if (string.IsNullOrWhiteSpace(tenant.Name) || tenant.Name.Length < 2)
                 errors.Add(new TenantValidationErrorDto { Field = "name", Message = "Name must be at least 2 characters long" });
 
-            if (string.IsNullOrWhiteSpace(tenant.Email) || !IsValidEmail(tenant.Email))
+            if (string.IsNullOrWhiteSpace(tenant.Email))
                 errors.Add(new TenantValidationErrorDto { Field = "email", Message = "Valid email address is required" });
 
-            if (string.IsNullOrWhiteSpace(tenant.PhoneNumber) || !IsValidPhone(tenant.PhoneNumber))
+            if (string.IsNullOrWhiteSpace(tenant.PhoneNumber))
                 errors.Add(new TenantValidationErrorDto { Field = "phoneNumber", Message = "Valid phone number is required" });
 
             if (tenant.DOB == default)
@@ -585,11 +587,11 @@ namespace RentConnect.Services.Implementations
             if (string.IsNullOrWhiteSpace(tenant.Occupation) || tenant.Occupation.Length < 2)
                 errors.Add(new TenantValidationErrorDto { Field = "occupation", Message = "Occupation is required" });
 
-            if (string.IsNullOrWhiteSpace(tenant.AadhaarNumber) || !IsValidAadhaar(tenant.AadhaarNumber))
-                errors.Add(new TenantValidationErrorDto { Field = "aadhaarNumber", Message = "Valid 12-digit Aadhaar number is required" });
+            //if (string.IsNullOrWhiteSpace(tenant.AadhaarNumber) || !IsValidAadhaar(tenant.AadhaarNumber))
+            //    errors.Add(new TenantValidationErrorDto { Field = "aadhaarNumber", Message = "Valid 12-digit Aadhaar number is required" });
 
-            if (string.IsNullOrWhiteSpace(tenant.PANNumber) || !IsValidPAN(tenant.PANNumber))
-                errors.Add(new TenantValidationErrorDto { Field = "panNumber", Message = "Valid PAN number is required (e.g., ABCDE1234F)" });
+            //if (string.IsNullOrWhiteSpace(tenant.PANNumber) || !IsValidPAN(tenant.PANNumber))
+            //    errors.Add(new TenantValidationErrorDto { Field = "panNumber", Message = "Valid PAN number is required (e.g., ABCDE1234F)" });
 
             if (tenant.PropertyId <= 0)
                 errors.Add(new TenantValidationErrorDto { Field = "propertyId", Message = "Property selection is required" });
@@ -643,12 +645,12 @@ namespace RentConnect.Services.Implementations
             }
 
             // Check for duplicate phone numbers
-            var phones = tenants.Where(t => !string.IsNullOrWhiteSpace(t.PhoneNumber)).Select(t => t.PhoneNumber).ToList();
-            var duplicatePhones = phones.GroupBy(p => p).Where(g => g.Count() > 1).Select(g => g.Key);
-            foreach (var phone in duplicatePhones)
-            {
-                errors.Add(new TenantValidationErrorDto { Field = "phoneNumber", Message = $"Duplicate phone number: {phone}" });
-            }
+            //var phones = tenants.Where(t => !string.IsNullOrWhiteSpace(t.PhoneNumber)).Select(t => t.PhoneNumber).ToList();
+            //var duplicatePhones = phones.GroupBy(p => p).Where(g => g.Count() > 1).Select(g => g.Key);
+            //foreach (var phone in duplicatePhones)
+            //{
+            //    errors.Add(new TenantValidationErrorDto { Field = "phoneNumber", Message = $"Duplicate phone number: {phone}" });
+            //}
 
             return errors;
         }

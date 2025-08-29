@@ -3,7 +3,7 @@
     public class TenantChildrenDto
     {
         public long Id { get; set; }
-        public int TenantGroupId { get; set; }
+        public string TenantGroupId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Email { get; set; }
         public DateTime DOB { get; set; }

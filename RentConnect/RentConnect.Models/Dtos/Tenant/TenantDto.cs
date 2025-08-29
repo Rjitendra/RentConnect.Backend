@@ -80,7 +80,7 @@
         public bool? NeedsOnboarding { get; set; } = true;
 
         // Grouping
-        public int TenantGroup { get; set; }
+        public string TenantGroup { get; set; }
 
         // Audit
         public string? IpAddress { get; set; }
