@@ -203,7 +203,7 @@ namespace RentConnect.Services.Implementations
                 CreatedOn = property.CreatedOn,
                 UpdatedOn = property.UpdatedOn,
                 Tenants = property.Tenants,
-                Documents = property.Documents?.Select(d => new Models.Dtos.Document.DocumentUploadDto
+                Documents = property.Documents?.Select(d => new Models.Dtos.Document.DocumentDto
                 {
                     OwnerId = d.OwnerId,
                     OwnerType = d.OwnerType,
@@ -214,7 +214,7 @@ namespace RentConnect.Services.Implementations
                     Size=d.Size,
                     Type=d.Type
                   
-                }).ToList() ?? new List<Models.Dtos.Document.DocumentUploadDto>()
+                }).ToList() ?? new List<Models.Dtos.Document.DocumentDto>()
             };
         }
 

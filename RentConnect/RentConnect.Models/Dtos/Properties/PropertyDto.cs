@@ -64,6 +64,6 @@ namespace RentConnect.Models.Dtos.Properties
         public DateTime? UpdatedOn { get; set; }
 
         // Navigation - Generic document link
-        public IList<DocumentUploadDto> Documents { get; set; } = new List<DocumentUploadDto>();
+        public IList<DocumentDto> Documents { get; set; } = new List<DocumentDto>();
     }
 }

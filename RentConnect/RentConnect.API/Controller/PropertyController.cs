@@ -66,7 +66,7 @@ namespace RentConnect.API.Controller
                 {
                     var documentUploadRequest = new DocumentUploadRequestDto
                     {
-                        Documents = request.Documents.Select(d => new DocumentUploadDto
+                        Documents = request.Documents.Select(d => new DocumentDto
                         {
                             File = d.File,
                             OwnerId = propertyId,
@@ -113,7 +113,7 @@ namespace RentConnect.API.Controller
                     {
                         Documents = request.Documents
                             .Where(d => d.File != null)
-                            .Select(d => new DocumentUploadDto
+                            .Select(d => new DocumentDto
                             {
                                 File = d.File,
                                 OwnerId = request.Id,

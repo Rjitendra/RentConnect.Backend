@@ -62,6 +62,16 @@
         // Extra grouping
         public int TenantGroup { get; set; }
 
+        //Onboarding and agrement
+        public bool? OnboardingEmailSent { get; set; }
+        public DateTime? OnboardingEmailDate { get; set; }
+        public bool? OnboardingCompleted { get; set; }
+        public bool? NeedsOnboarding { get; set; }
+        public bool? AgreementSigned { get; set; }
+        public DateTime? AgreementDate { get; set; }
+        public string? AgreementUrl { get; set; }
+
+
         // Navigation collections
         public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
         public ICollection<Document> Documents { get; set; } = new List<Document>();

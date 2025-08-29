@@ -11,7 +11,7 @@ namespace RentConnect.API.Extentions
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
             services.AddTransient<IPropertyService, PropertyService>();
             services.AddTransient<IDocumentService, DocumentService>();
-            //services.AddTransient<ITenantService, TenantService>();
+            services.AddTransient<ITenantService, TenantService>();
             //services.AddTransient<IUserService, UserService>();
             //services.AddTransient<ITicketService, TicketService>();
             //services.AddTransient<IPaymentService, PaymentService>();

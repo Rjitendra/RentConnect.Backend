@@ -11,7 +11,10 @@
         [FromForm] public string OwnerType { get; set; }
         [FromForm] public DocumentCategory Category { get; set; }
 
+        public long? LandlordId { get; set; }
+        public long? PropertyId { get; set; }
 
+        public long? TenantId { get; set; }
         public string? Name { get; set; }
         public long? Size { get; set; }
         public string? Type { get; set; }
@@ -27,7 +30,7 @@
 
     }
 
-    public class DocumenDto
+    public class DocumentUploadRequestDto
     {
         [FromForm] public List<DocumentDto> Documents { get; set; } = new();
     }

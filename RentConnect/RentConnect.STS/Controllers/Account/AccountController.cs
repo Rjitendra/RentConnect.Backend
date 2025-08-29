@@ -492,11 +492,11 @@
                 await this.ApiContext.Landlord.AddAsync(landlord);
                 await this.ApiContext.SaveChangesAsync();
 
-                var documentDtos = new List<DocumentUploadDto>();
+                var documentDtos = new List<DocumentDto>();
 
                 if (model.UploadAddressProof != null)
                 {
-                    documentDtos.Add(new DocumentUploadDto
+                    documentDtos.Add(new DocumentDto
                     {
                         File = model.UploadAddressProof,
                         OwnerId = landlord.Id,
@@ -507,7 +507,7 @@
 
                 if (model.UploadIdProof != null)
                 {
-                    documentDtos.Add(new DocumentUploadDto
+                    documentDtos.Add(new DocumentDto
                     {
                         File = model.UploadIdProof,
                         OwnerId = landlord.Id,
@@ -682,10 +682,10 @@
                 await this.ApiContext.SaveChangesAsync();
 
                 // 4. Prepare documents
-                var documentDtos = new List<DocumentUploadDto>();
+                var documentDtos = new List<DocumentDto>();
 
                 if (model.UploadAddressProof != null)
-                    documentDtos.Add(new DocumentUploadDto
+                    documentDtos.Add(new DocumentDto
                     {
                         File = model.UploadAddressProof,
                         OwnerId = landlord.Id,
@@ -694,7 +694,7 @@
                     });
 
                 if (model.UploadIdProof != null)
-                    documentDtos.Add(new DocumentUploadDto
+                    documentDtos.Add(new DocumentDto
                     {
                         File = model.UploadIdProof,
                         OwnerId = landlord.Id,
@@ -1149,7 +1149,7 @@
             return false;
         }
 
-        private async Task<bool> UploadAllDocumentsAsync(List<DocumentUploadDto> documents)
+        private async Task<bool> UploadAllDocumentsAsync(List<DocumentDto> documents)
         {
             if (documents == null || !documents.Any())
                 return false;
