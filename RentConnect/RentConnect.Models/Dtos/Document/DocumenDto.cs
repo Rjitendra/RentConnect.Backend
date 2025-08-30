@@ -6,10 +6,10 @@
 
     public class DocumentDto
     {
-        [FromForm] public IFormFile File { get; set; }
-        [FromForm] public long OwnerId { get; set; }
-        [FromForm] public string OwnerType { get; set; }
-        [FromForm] public DocumentCategory Category { get; set; }
+        public IFormFile? File { get; set; }
+        public long? OwnerId { get; set; }
+        public string? OwnerType { get; set; }
+        public DocumentCategory? Category { get; set; }
 
         public long? LandlordId { get; set; }
         public long? PropertyId { get; set; }
@@ -23,7 +23,7 @@
         // Document metadata
         public string? DocumentIdentifier { get; set; }  // Unique identifier
         public string? UploadedOn { get; set; } = DateTime.UtcNow.ToString("o"); // ISO format
-        public bool IsVerified { get; set; } = true; // Default false
+        public bool? IsVerified { get; set; } = true; // Default false
         public string? VerifiedBy { get; set; } = string.Empty; // Default empty
         public string? Description { get; set; } = string.Empty; // Default empty
 

@@ -6,16 +6,16 @@
 
     public class Document : BaseEntity
     {
-        public long OwnerId { get; set; } // Landlord/Tenant ID
+        public long? OwnerId { get; set; } // Landlord/Tenant ID
 
-        public string OwnerType { get; set; } // "Landlord" or "Tenant"
+        public string? OwnerType { get; set; } // "Landlord" or "Tenant"
 
         public long? LandlordId { get; set; } = -1;
         public long? PropertyId { get; set; } = -1;
 
         public long? TenantId { get; set; } = -1;
 
-        public DocumentCategory Category { get; set; } // Enum for Aadhaar, Photo, RentalAgreement, etc.
+        public DocumentCategory? Category { get; set; } // Enum for Aadhaar, Photo, RentalAgreement, etc.
                                                        // File metadata
         public string? Name { get; set; }
         public long? Size { get; set; }
@@ -25,7 +25,7 @@
         // Document metadata
         public string? DocumentIdentifier { get; set; }  // Unique identifier
         public string? UploadedOn { get; set; } = DateTime.UtcNow.ToString("o"); // ISO format
-        public bool IsVerified { get; set; } = true; // Default false
+        public bool? IsVerified { get; set; } = true; // Default false
         public string? VerifiedBy { get; set; } = string.Empty; // Default empty
         public string? Description { get; set; } = string.Empty; // Default empty
 

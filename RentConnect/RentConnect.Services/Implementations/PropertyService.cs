@@ -202,18 +202,19 @@ namespace RentConnect.Services.Implementations
                 Status = property.Status,
                 CreatedOn = property.CreatedOn,
                 UpdatedOn = property.UpdatedOn,
-                Tenants = property.Tenants,
+                Tenants = [],
                 Documents = property.Documents?.Select(d => new Models.Dtos.Document.DocumentDto
                 {
+                    File = null,
                     OwnerId = d.OwnerId,
                     OwnerType = d.OwnerType,
                     Category = d.Category,
                     Url = d.Url,
-                    Name = Path.GetFileName(d.Url),
-                    DocumentIdentifier = d.Id.ToString(),
-                    Size=d.Size,
-                    Type=d.Type
-                  
+                    Name =d.Name,
+                    DocumentIdentifier = d.DocumentIdentifier,
+                    Size = d.Size,
+                    Type = d.Type
+
                 }).ToList() ?? new List<Models.Dtos.Document.DocumentDto>()
             };
         }
@@ -222,7 +223,7 @@ namespace RentConnect.Services.Implementations
         {
             return new Property
             {
-                LandlordId = dto.LandlordId,
+                LandlordId = dto.LandlordId.Value,
                 Title = dto.Title,
                 Description = dto.Description,
                 PropertyType = dto.PropertyType,

@@ -27,7 +27,7 @@
                 var savedDocs = new List<Document>();
                 foreach (var doc in request.Documents.Where(d => d.File != null && d.File.Length > 0))
                 {
-                    var fileUrl = await SaveFileAsync(doc.File, doc.OwnerType, doc.OwnerId);
+                    var fileUrl = await SaveFileAsync(doc.File, doc.OwnerType, doc.OwnerId.Value);
                     savedDocs.Add(new Document
                     {
                         OwnerId = doc.OwnerId,

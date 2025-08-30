@@ -2,15 +2,15 @@
 {
     public class TenantChildrenDto
     {
-        public long Id { get; set; }
-        public string TenantGroupId { get; set; }
-        public string Name { get; set; } = string.Empty;
+        public long? Id { get; set; }
+        public string? TenantGroupId { get; set; }
+        public string? Name { get; set; } = string.Empty;
         public string? Email { get; set; }
-        public DateTime DOB { get; set; }
-        public string Occupation { get; set; } = string.Empty;
+        public DateTime?  DOB { get; set; }
+        public string? Occupation { get; set; } = string.Empty;
 
         // Calculated property - Age is computed from DOB
-        public int Age => CalculateAge(DOB);
+        public int Age => CalculateAge(DOB.Value);
 
         // Helper method for age calculation
         private static int CalculateAge(DateTime dob)

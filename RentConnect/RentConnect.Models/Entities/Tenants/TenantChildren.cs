@@ -9,13 +9,13 @@
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public long Id { get; set; }
 
-        public string TenantGroupId { get; set; }
-        public string Name { get; set; }
+        public string? TenantGroupId { get; set; }
+        public string? Name { get; set; }
 
         public string? Email { get; set; }
 
-        public DateTime DOB { get; set; }
+        public DateTime? DOB { get; set; }
 
-        public string Occupation { get; set; }
+        public string? Occupation { get; set; }
     }
 }

@@ -253,7 +253,7 @@ namespace RentConnect.API.Migrations
                     b.Property<int?>("BaseVersionId")
                         .HasColumnType("int");
 
-                    b.Property<int>("Category")
+                    b.Property<int?>("Category")
                         .HasColumnType("int");
 
                     b.Property<string>("Description")
@@ -271,7 +271,7 @@ namespace RentConnect.API.Migrations
                     b.Property<bool>("IsValid")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsVerified")
+                    b.Property<bool?>("IsVerified")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsVisible")
@@ -283,11 +283,10 @@ namespace RentConnect.API.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<long>("OwnerId")
+                    b.Property<long?>("OwnerId")
                         .HasColumnType("bigint");
 
                     b.Property<string>("OwnerType")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("PkId")
@@ -537,7 +536,7 @@ namespace RentConnect.API.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsFurnished")
+                    b.Property<bool?>("IsFurnished")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsLatestVersion")
@@ -660,7 +659,7 @@ namespace RentConnect.API.Migrations
                     b.Property<string>("CurrentAddress")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("DOB")
+                    b.Property<DateTime?>("DOB")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("DateCreated")
@@ -702,10 +701,10 @@ namespace RentConnect.API.Migrations
                     b.Property<string>("IpAddress")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("IsAcknowledge")
+                    b.Property<bool?>("IsAcknowledge")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsActive")
+                    b.Property<bool?>("IsActive")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsDeleted")
@@ -714,16 +713,16 @@ namespace RentConnect.API.Migrations
                     b.Property<bool>("IsLatestVersion")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsNewTenant")
+                    b.Property<bool?>("IsNewTenant")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsPrimary")
+                    b.Property<bool?>("IsPrimary")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsValid")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsVerified")
+                    b.Property<bool?>("IsVerified")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsVisible")
@@ -745,7 +744,6 @@ namespace RentConnect.API.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Name")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool?>("NeedsOnboarding")
@@ -755,7 +753,6 @@ namespace RentConnect.API.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Occupation")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool?>("OnboardingCompleted")
@@ -774,7 +771,6 @@ namespace RentConnect.API.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PhoneNumber")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("PkId")
@@ -783,16 +779,16 @@ namespace RentConnect.API.Migrations
                     b.Property<long>("PropertyId")
                         .HasColumnType("bigint");
 
-                    b.Property<decimal>("RentAmount")
+                    b.Property<decimal?>("RentAmount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<DateTime>("RentDueDate")
+                    b.Property<DateTime?>("RentDueDate")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("RentGuideFileUrl")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<decimal>("SecurityDeposit")
+                    b.Property<decimal?>("SecurityDeposit")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int?>("StatusId")
@@ -801,11 +797,11 @@ namespace RentConnect.API.Migrations
                     b.Property<DateTime?>("TenancyEndDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime>("TenancyStartDate")
+                    b.Property<DateTime?>("TenancyStartDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("TenantGroup")
-                        .HasColumnType("int");
+                    b.Property<string>("TenantGroup")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("UpdatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -847,22 +843,20 @@ namespace RentConnect.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<DateTime>("DOB")
+                    b.Property<DateTime?>("DOB")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Occupation")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("TenantGroupId")
-                        .HasColumnType("int");
+                    b.Property<string>("TenantGroupId")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 

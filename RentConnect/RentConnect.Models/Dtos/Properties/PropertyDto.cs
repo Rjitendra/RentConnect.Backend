@@ -4,16 +4,17 @@
 namespace RentConnect.Models.Dtos.Properties
 {
     using RentConnect.Models.Dtos.Document;
+    using RentConnect.Models.Dtos.Tenants;
     using RentConnect.Models.Entities.Landlords;
     using RentConnect.Models.Entities.Tenants;
     using RentConnect.Models.Enums;
     public class PropertyDto
     {
-        public long Id { get; set; }
+        public long? Id { get; set; }
         // ✅ Relationship to Landlord(1 Landlord → Many Properties)
-        public long LandlordId { get; set; }
+        public long? LandlordId { get; set; }
         // ✅ Relationship to Tenants (1 Property → Many Tenants)
-        public ICollection<Tenant> Tenants { get; set; } = new List<Tenant>();
+        public ICollection<TenantDto>? Tenants { get; set; } = new List<TenantDto>();
 
         // Basic Info
         public string? Title { get; set; } // "2 BHK Apartment in Pune"
@@ -24,7 +25,7 @@ namespace RentConnect.Models.Dtos.Properties
         public int? TotalFloors { get; set; }
         public double? CarpetAreaSqFt { get; set; }
         public double? BuiltUpAreaSqFt { get; set; }
-        public bool IsFurnished { get; set; }
+        public bool? IsFurnished { get; set; }
         public FurnishingType? FurnishingType { get; set; } // Enum: Unfurnished, SemiFurnished, FullyFurnished
         public int? NumberOfBathrooms { get; set; }
         public int? NumberOfBalconies { get; set; }

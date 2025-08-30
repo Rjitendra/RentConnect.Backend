@@ -19,12 +19,12 @@
 
 
         // Personal info
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public string? Email { get; set; }
-        public string PhoneNumber { get; set; }
+        public string? PhoneNumber { get; set; }
         public string? AlternatePhoneNumber { get; set; }
-        public DateTime DOB { get; set; }
-        public string Occupation { get; set; }
+        public DateTime? DOB { get; set; }
+        public string? Occupation { get; set; }
         public string? Gender { get; set; } // 'Male', 'Female', 'Other'
         public string? MaritalStatus { get; set; } // 'Single', 'Married', 'Divorced', 'Widowed'
 
@@ -37,7 +37,7 @@
 
         // Govt. IDs
         public string? AadhaarNumber { get; set; }
-        public string? PanNumber { get; set; } // Changed from PANNumber to match TypeScript
+        public string? PanNumber { get; set; } 
         public string? DrivingLicenseNumber { get; set; }
         public string? VoterIdNumber { get; set; }
 
@@ -49,11 +49,11 @@
         public int? WorkExperience { get; set; } // in years
 
         // Tenancy details
-        public DateTime TenancyStartDate { get; set; }
+        public DateTime? TenancyStartDate { get; set; }
         public DateTime? TenancyEndDate { get; set; }
-        public DateTime RentDueDate { get; set; }
-        public decimal RentAmount { get; set; }
-        public decimal SecurityDeposit { get; set; }
+        public DateTime? RentDueDate { get; set; }
+        public decimal? RentAmount { get; set; }
+        public decimal? SecurityDeposit { get; set; }
         public decimal? MaintenanceCharges { get; set; }
         public int? LeaseDuration { get; set; } // in months
         public int? NoticePeriod { get; set; } // in days
@@ -64,15 +64,15 @@
         public string? DepositReceiptUrl { get; set; }
 
         // Acknowledgement & verification
-        public bool IsAcknowledge { get; set; }
+        public bool? IsAcknowledge { get; set; }
         public DateTime? AcknowledgeDate { get; set; }
-        public bool IsVerified { get; set; }
+        public bool? IsVerified { get; set; }
         public string? VerificationNotes { get; set; }
 
         // Flags
-        public bool IsNewTenant { get; set; }
-        public bool IsPrimary { get; set; }
-        public bool IsActive { get; set; }
+        public bool? IsNewTenant { get; set; }
+        public bool? IsPrimary { get; set; }
+        public bool? IsActive { get; set; }
 
         // Audit
         public string? IpAddress { get; set; }
@@ -84,7 +84,7 @@
         public virtual ApplicationUser? User { get; set; }
 
         // Extra grouping
-        public int TenantGroup { get; set; }
+        public string? TenantGroup { get; set; }
 
         //Onboarding and agrement
         public bool? OnboardingEmailSent { get; set; }
