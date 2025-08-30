@@ -11,16 +11,23 @@
     {
         protected IActionResult ProcessResult(Result result)
         {
+            var response = new
+            {
+                Status = result.Status,
+                Message = result.Message,
+                Entity = (object?)null
+            };
+
             switch (result.Status)
             {
                 case ResultStatusType.Success:
-                    return this.Ok();
+                    return this.Ok(response);
 
                 case ResultStatusType.Failure:
-                    return this.BadRequest(result.Message);
+                    return this.BadRequest(response);
 
                 case ResultStatusType.NotFound:
-                    return this.NotFound(result.Message);
+                    return this.NotFound(response);
 
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -29,16 +36,22 @@
 
         protected IActionResult ProcessResult<T>(Result<T> result)
         {
+            var response = new
+            {
+                Status = result.Status,
+                Message = result.Message,
+                Entity = result.Entity
+            };
             switch (result.Status)
             {
                 case ResultStatusType.Success:
-                    return this.Ok(result.Entity);
+                    return this.Ok(response);
 
                 case ResultStatusType.Failure:
-                    return this.BadRequest(result.Message);
+                    return this.BadRequest(response);
 
                 case ResultStatusType.NotFound:
-                    return this.NotFound(result.Message);
+                    return this.NotFound(response);
 
                 default:
                     throw new ArgumentOutOfRangeException();

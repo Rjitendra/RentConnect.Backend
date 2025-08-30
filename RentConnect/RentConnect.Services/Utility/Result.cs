@@ -14,19 +14,19 @@
 
         public ResultStatusType Status { get; }
 
-        public static Result Failure(string message = null)
+        public static Result Failure(string message = "Opertation failed")
         {
             return new Result(ResultStatusType.Failure, message);
         }
 
-        public static Result NotFound()
+        public static Result NotFound(string message = "Resource not found")
         {
-            return new Result(ResultStatusType.NotFound);
+            return new Result(ResultStatusType.NotFound, message);
         }
 
-        public static Result Success()
+        public static Result Success(string message = "Operation completed successfully")
         {
-            return new Result(ResultStatusType.Success);
+            return new Result(ResultStatusType.Success, message);
         }
     }
 }

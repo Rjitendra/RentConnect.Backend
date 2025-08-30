@@ -25,24 +25,24 @@ namespace RentConnect.Services.Utility
 
         public ResultStatusType Status { get; }
 
-        public static Result<T> Failure(string message = null)
+        public static Result<T> Failure(string message = "Opertation failed")
         {
             return new Result<T>(ResultStatusType.Failure, message);
         }
 
-        public static Result<T> Failure(T entity)
+        public static Result<T> Failure(T entity, string message = "Opertation failed")
         {
-            return new Result<T>(ResultStatusType.Failure, entity);
+            return new Result<T>(ResultStatusType.Failure, entity, message);
         }
 
-        public static Result<T> NotFound()
+        public static Result<T> NotFound(string message = "Resource not found")
         {
-            return new Result<T>(ResultStatusType.NotFound);
+            return new Result<T>(ResultStatusType.NotFound, default(T), message);
         }
 
-        public static Result<T> Success(T entity)
+        public static Result<T> Success(T entity, string message = "Operation completed successfully")
         {
-            return new Result<T>(ResultStatusType.Success, entity);
+            return new Result<T>(ResultStatusType.Success, entity, message);
         }
     }
 }
