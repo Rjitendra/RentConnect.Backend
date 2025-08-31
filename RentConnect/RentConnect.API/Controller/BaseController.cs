@@ -15,6 +15,7 @@
             {
                 Status = result.Status,
                 Message = result.Message,
+                Success = result.Status == ResultStatusType.Success,
                 Entity = (object?)null
             };
 
@@ -40,6 +41,7 @@
             {
                 Status = result.Status,
                 Message = result.Message,
+                Success = result.Status == ResultStatusType.Success,
                 Entity = result.Entity
             };
             switch (result.Status)

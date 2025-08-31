@@ -9,6 +9,8 @@
         public DateTime?  DOB { get; set; }
         public string? Occupation { get; set; } = string.Empty;
 
+        public long? TenantId { get; set; }
+
         // Calculated property - Age is computed from DOB
         public int Age => CalculateAge(DOB.Value);
 

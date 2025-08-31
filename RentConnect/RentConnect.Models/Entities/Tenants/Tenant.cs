@@ -98,6 +98,7 @@
 
         // Navigation collections
         public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
+        public ICollection<TenantChildren> TenantChildren { get; set; } = new List<TenantChildren>();
         public ICollection<Document> Documents { get; set; } = new List<Document>();
     }
 }

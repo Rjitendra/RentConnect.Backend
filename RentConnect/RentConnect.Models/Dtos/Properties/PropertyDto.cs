@@ -57,6 +57,8 @@ namespace RentConnect.Models.Dtos.Properties
         public bool? HasSecurity { get; set; }
         public bool? HasInternet { get; set; }
 
+        public bool? IsValid { get; set; } = false;
+
         // Status
         public PropertyStatus? Status { get; set; } // Enum: Draft, Listed, Rented, Archived
 

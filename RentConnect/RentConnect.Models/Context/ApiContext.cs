@@ -74,6 +74,13 @@
                 .HasForeignKey(t => t.LandlordId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+
+            modelBuilder.Entity<Tenant>()
+                .HasMany(t => t.TenantChildren)
+                .WithOne(l => l.Tenant)
+                .HasForeignKey(t => t.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // Property → Tenant (1:N)
             modelBuilder.Entity<Tenant>()
                 .HasOne(t => t.Property)

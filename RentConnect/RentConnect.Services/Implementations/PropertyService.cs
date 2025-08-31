@@ -1,8 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using RentConnect.Models.Context;
+using RentConnect.Models.Dtos.Document;
 using RentConnect.Models.Dtos.Properties;
+using RentConnect.Models.Dtos.Tenants;
 using RentConnect.Models.Entities.Landlords;
 using RentConnect.Models.Entities.Properties;
+using RentConnect.Models.Entities.Tenants;
 using RentConnect.Models.Enums;
 using RentConnect.Services.Interfaces;
 using RentConnect.Services.Utility;
@@ -24,7 +27,7 @@ namespace RentConnect.Services.Implementations
             {
                 var properties = await _context.Property
                     .Where(p => p.LandlordId == landlordId)
-                    .Include(p => p.Tenants)
+                    .Include(p => p.Tenants).ThenInclude(x => x.TenantChildren)
                     .ToListAsync();
                 var documents = await this._context.Document.Where(x => x.OwnerId == landlordId).ToArrayAsync();
 
@@ -71,7 +74,7 @@ namespace RentConnect.Services.Implementations
                 var property = MapToEntity(propertyDto);
                 property.CreatedOn = DateTime.UtcNow;
                 property.UpdatedOn = DateTime.UtcNow;
-                property.Status = PropertyStatus.Draft;
+
 
                 _context.Property.Add(property);
                 await _context.SaveChangesAsync();
@@ -114,9 +117,22 @@ namespace RentConnect.Services.Implementations
         {
             try
             {
-                var property = await _context.Property.FindAsync(id);
+                var property = await _context.Property.Include(x => x.Tenants).ThenInclude(x => x.TenantChildren).FirstOrDefaultAsync(p => p.Id == id); ;
                 if (property == null)
+                {
                     return Result<long>.Failure("Property not found");
+                }
+                bool hasTenants = property.Tenants?.Any() == true;
+                if (hasTenants) { return Result<long>.Failure("This property is associated with a tenant. Please delete the tenant first."); }
+
+                bool primaryHasChildren = property.Tenants?
+                  .Any(t => t.IsPrimary == true && t.TenantChildren?.Any() == true) == true;
+
+
+                if (primaryHasChildren)
+                {
+                    return Result<long>.Failure("This property is associated with a tenant’s children. Please delete the tenant’s children first.");
+                }
 
                 // Soft delete - you might want to implement a IsDeleted flag instead
                 _context.Property.Remove(property);
@@ -202,7 +218,11 @@ namespace RentConnect.Services.Implementations
                 Status = property.Status,
                 CreatedOn = property.CreatedOn,
                 UpdatedOn = property.UpdatedOn,
-                Tenants = [],
+                            Tenants = property.Tenants?
+                .Select(x => MapEntityTenantDto(x))
+                .ToList() ?? new List<TenantDto>(),
+
+                IsValid = property.IsValid,
                 Documents = property.Documents?.Select(d => new Models.Dtos.Document.DocumentDto
                 {
                     File = null,
@@ -210,7 +230,7 @@ namespace RentConnect.Services.Implementations
                     OwnerType = d.OwnerType,
                     Category = d.Category,
                     Url = d.Url,
-                    Name =d.Name,
+                    Name = d.Name,
                     DocumentIdentifier = d.DocumentIdentifier,
                     Size = d.Size,
                     Type = d.Type
@@ -298,5 +318,116 @@ namespace RentConnect.Services.Implementations
             entity.HasInternet = dto.HasInternet;
             entity.Status = dto.Status;
         }
+
+        private TenantDto MapEntityTenantDto(Models.Entities.Tenants.Tenant tenant)
+        {
+            if (tenant == null) return null;
+
+            return new TenantDto
+            {
+                Id = tenant.Id,
+                LandlordId = tenant.LandlordId,
+                PropertyId = tenant.PropertyId,
+
+                // Personal Info
+                Name = tenant.Name ?? string.Empty,
+                Email = tenant.Email,
+                PhoneNumber = tenant.PhoneNumber ?? string.Empty,
+                AlternatePhoneNumber = tenant.AlternatePhoneNumber,
+                DOB = tenant.DOB ?? DateTime.MinValue,
+                Occupation = tenant.Occupation ?? string.Empty,
+                Gender = tenant.Gender,
+                MaritalStatus = tenant.MaritalStatus,
+
+                // Addresses
+                CurrentAddress = tenant.CurrentAddress,
+                PermanentAddress = tenant.PermanentAddress,
+
+                // Emergency Contact
+                EmergencyContactName = tenant.EmergencyContactName,
+                EmergencyContactPhone = tenant.EmergencyContactPhone,
+                EmergencyContactRelation = tenant.EmergencyContactRelation,
+
+                // Government IDs
+                AadhaarNumber = tenant.AadhaarNumber,
+                PANNumber = tenant.PanNumber, // entity → dto naming difference
+                DrivingLicenseNumber = tenant.DrivingLicenseNumber,
+                VoterIdNumber = tenant.VoterIdNumber,
+
+                // Employment
+                EmployerName = tenant.EmployerName,
+                EmployerAddress = tenant.EmployerAddress,
+                EmployerPhone = tenant.EmployerPhone,
+                MonthlyIncome = tenant.MonthlyIncome,
+                WorkExperience = tenant.WorkExperience,
+
+                // Tenancy
+                TenancyStartDate = tenant.TenancyStartDate ?? DateTime.MinValue,
+                TenancyEndDate = tenant.TenancyEndDate,
+                RentDueDate = tenant.RentDueDate ?? DateTime.MinValue,
+                RentAmount = tenant.RentAmount ?? 0,
+                SecurityDeposit = tenant.SecurityDeposit ?? 0,
+                MaintenanceCharges = tenant.MaintenanceCharges,
+                LeaseDuration = tenant.LeaseDuration ?? 12,
+                NoticePeriod = tenant.NoticePeriod ?? 30,
+
+                // Agreement / Onboarding
+                AgreementSigned = tenant.AgreementSigned,
+                AgreementDate = tenant.AgreementDate,
+                AgreementUrl = tenant.AgreementUrl,
+                OnboardingEmailSent = tenant.OnboardingEmailSent,
+                OnboardingEmailDate = tenant.OnboardingEmailDate,
+                OnboardingCompleted = tenant.OnboardingCompleted,
+
+                // Files
+                BackgroundCheckFileUrl = tenant.BackgroundCheckFileUrl,
+                RentGuideFileUrl = tenant.RentGuideFileUrl,
+                DepositReceiptUrl = tenant.DepositReceiptUrl,
+
+                // Acknowledgement / Verification
+                IsAcknowledge = tenant.IsAcknowledge ?? false,
+                AcknowledgeDate = tenant.AcknowledgeDate,
+                IsVerified = tenant.IsVerified ?? false,
+                VerificationNotes = tenant.VerificationNotes,
+
+                // Flags
+                IsNewTenant = tenant.IsNewTenant ?? true,
+                IsPrimary = tenant.IsPrimary ?? false,
+                IsActive = tenant.IsActive ?? true,
+                NeedsOnboarding = tenant.NeedsOnboarding ?? true,
+
+                // Grouping
+                TenantGroup = tenant.TenantGroup,
+
+                // Audit
+                IpAddress = tenant.IpAddress,
+                DateCreated = tenant.DateCreated,
+                DateModified = tenant.DateModified,
+
+                // Navigation Collections
+                Documents = [],
+
+                Children = tenant.TenantChildren?.Select(c => new TenantChildrenDto
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    Email = c.Email,
+                    DOB = c.DOB,
+                    Occupation = c.Occupation,
+                    TenantGroupId = c.TenantGroupId,
+                    TenantId = c.TenantId,
+
+                }).ToList() ?? new List<TenantChildrenDto>(),
+
+                // Extra UI props
+                PropertyName = tenant.Property.Title,  // assuming `Property.Name` exists
+                TenantCount = tenant.Property?.Tenants?.Count ?? 0,
+                StatusDisplay = tenant.IsActive == true ? "Active" : "Inactive",
+                StatusClass = tenant.IsActive == true ? "status-active" : "status-inactive",
+                StatusIcon = tenant.IsActive == true ? "check_circle" : "cancel"
+            };
+        }
+
+
     }
 }

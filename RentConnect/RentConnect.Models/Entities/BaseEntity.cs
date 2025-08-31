@@ -10,14 +10,14 @@
         public long Id { get; set; }
 
         public Guid PkId { get; set; } = Guid.NewGuid();
-        public string? UpdatedBy { get; set; }
+        public string? UpdatedBy { get; set; } = "Jitendra";
         public DateTime UpdatedDate { get; set; } = DateTime.UtcNow;
         public bool IsValid { get; set; } = true;
         public bool IsVisible { get; set; } = true;
         public bool IsDeleted { get; set; } = false;
-        public int? BaseVersionId { get; set; }
-        public int? VersionId { get; set; }
+        public int? BaseVersionId { get; set; } = 0;
+        public int? VersionId { get; set; } = 0;
         public bool IsLatestVersion { get; set; } = true;
-        public int? StatusId { get; set; }
+        public int? StatusId { get; set; } = 1;
     }
 }
