@@ -69,10 +69,21 @@ namespace RentConnect.API.Controller
                         Documents = request.Documents.Select(d => new DocumentDto
                         {
                             File = d.File,
-                            OwnerId = propertyId,
+                            OwnerId = request.LandlordId,
                             OwnerType = "Landlord",
                             Category = d.Category,
-                            Description = d.Description
+                            Description = d.Description,
+                            LandlordId = request.LandlordId,
+                            PropertyId = propertyId,
+                            TenantId = d.TenantId,
+                            Url = null,
+                            Name = d.File.FileName,
+                            Size = d.File.Length,
+                            Type = d.File.ContentType,
+                            UploadedOn = DateTime.UtcNow.ToString("o"), // Keep consistent with current entity
+                            IsVerified = true,
+                            DocumentIdentifier=null
+
                         }).ToList()
                     };
 
@@ -111,16 +122,25 @@ namespace RentConnect.API.Controller
                 {
                     var documentUploadRequest = new DocumentUploadRequestDto
                     {
-                        Documents = request.Documents
-                            .Where(d => d.File != null)
-                            .Select(d => new DocumentDto
-                            {
-                                File = d.File,
-                                OwnerId = request.Id,
-                                OwnerType = "Property",
-                                Category = d.Category,
-                                Description = d.Description
-                            }).ToList()
+                        Documents = request.Documents.Select(d => new DocumentDto
+                        {
+                            File = d.File,
+                            OwnerId = request.LandlordId,
+                            OwnerType = "Landlord",
+                            Category = d.Category,
+                            Description = d.Description,
+                            LandlordId = request.LandlordId,
+                            PropertyId = request.Id,
+                            TenantId = d.TenantId,
+                            Url = null,
+                            Name = d.File.FileName,
+                            Size = d.File.Length,
+                            Type = d.File.ContentType,
+                            UploadedOn = DateTime.UtcNow.ToString("o"), // Keep consistent with current entity
+                            IsVerified = true,
+                            DocumentIdentifier = null
+
+                        }).ToList()
                     };
 
                     // Call document controller to upload new files
@@ -271,6 +291,104 @@ namespace RentConnect.API.Controller
             catch (Exception ex)
             {
                 return BadRequest($"Failed to search properties: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Get property images by landlord ID and property ID
+        /// </summary>
+        /// <param name="landlordId">Landlord ID</param>
+        /// <param name="propertyId">Property ID</param>
+        /// <returns>List of property images with accessible URLs</returns>
+        [HttpGet("landlord/{landlordId}/{propertyId}/images")]
+        public async Task<IActionResult> GetPropertyImages(long landlordId, long propertyId)
+        {
+            try
+            {
+                // First verify that the property exists and belongs to the landlord
+                var propertyResult = await _propertyService.GetProperty(propertyId);
+                if (!propertyResult.IsSuccess)
+                    return ProcessResult(propertyResult);
+
+                var property = propertyResult.Entity;
+                if (property.LandlordId != landlordId)
+                    return BadRequest("Property does not belong to the specified landlord");
+
+                // Get property images
+                var imagesResult = await _documentService.GetPropertyImages(landlordId, propertyId);
+                if (!imagesResult.IsSuccess)
+                    return ProcessResult(imagesResult);
+
+                // Convert relative paths to full URLs that can be accessed
+                var baseUrl = $"{Request.Scheme}://{Request.Host}";
+
+                var imageList = imagesResult.Entity.Select(img =>
+                {
+                    img.Url = $"{baseUrl}{img.Url}"; // For Angular display
+                    img.DownloadUrl = $"{baseUrl}/api/Property/landlord/{landlordId}/property/{propertyId}/image/{img.DocumentIdentifier}/download";
+                    return img;
+                }).ToList();
+
+
+
+
+                return Ok(new
+                {
+                    Status = imagesResult.Status,
+                    Message = imagesResult.Message,
+                    Success = true,
+                    Entity = imageList
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Failed to get property images: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Download a specific property image
+        /// </summary>
+        /// <param name="landlordId">Landlord ID</param>
+        /// <param name="propertyId">Property ID</param>
+        /// <param name="imageId">Image document ID</param>
+        /// <returns>Image file download</returns>
+        [HttpGet("landlord/{landlordId}/property/{propertyId}/image/{imageId}/download")]
+        public async Task<IActionResult> DownloadPropertyImage(long landlordId, long propertyId, long imageId)
+        {
+            try
+            {
+                // First verify that the property exists and belongs to the landlord
+                var propertyResult = await _propertyService.GetProperty(propertyId);
+                if (!propertyResult.IsSuccess)
+                    return ProcessResult(propertyResult);
+
+                var property = propertyResult.Entity;
+                if (property.LandlordId != landlordId)
+                    return BadRequest("Property does not belong to the specified landlord");
+
+                // Download the specific image
+                var imageResult = await _documentService.DownloadDocument(imageId);
+                if (!imageResult.IsSuccess)
+                    return ProcessResult(imageResult);
+
+                // Get image metadata to determine content type
+                var imagesResult = await _documentService.GetPropertyImages(landlordId, propertyId);
+                if (!imagesResult.IsSuccess)
+                    return NotFound("Image not found");
+
+                var imageMetadata = imagesResult.Entity.FirstOrDefault(img => img.DocumentIdentifier == imageId.ToString());
+                if (imageMetadata == null)
+                    return NotFound("Image not found in property images");
+
+                var contentType = imageMetadata.Type ?? "application/octet-stream";
+                var fileName = imageMetadata.Name ?? $"property_image_{imageId}";
+
+                return File(imageResult.Entity, contentType, fileName);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Failed to download property image: {ex.Message}");
             }
         }
     }

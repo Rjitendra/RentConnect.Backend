@@ -180,20 +180,27 @@ namespace RentConnect.Services.Implementations
         {
             return new PropertyDto
             {
+                // Identity & Relationships
                 Id = property.Id,
                 LandlordId = property.LandlordId,
+                // Tenants -> comes from navigation, not direct mapping here
+
+                // Basic Info
                 Title = property.Title,
                 Description = property.Description,
                 PropertyType = property.PropertyType,
                 BhkConfiguration = property.BhkConfiguration,
                 FloorNumber = property.FloorNumber,
                 TotalFloors = property.TotalFloors,
-                CarpetAreaSqFt = property.CarpetAreaSqFt,
-                BuiltUpAreaSqFt = property.BuiltUpAreaSqFt,
-                IsFurnished = property.IsFurnished,
-                FurnishingType = property.FurnishingType,
                 NumberOfBathrooms = property.NumberOfBathrooms,
                 NumberOfBalconies = property.NumberOfBalconies,
+
+                // Area & Furnishing
+                CarpetAreaSqFt = property.CarpetAreaSqFt,
+                BuiltUpAreaSqFt = property.BuiltUpAreaSqFt,
+                FurnishingType = property.FurnishingType,
+
+                // Location
                 AddressLine1 = property.AddressLine1,
                 AddressLine2 = property.AddressLine2,
                 Landmark = property.Landmark,
@@ -203,11 +210,15 @@ namespace RentConnect.Services.Implementations
                 PinCode = property.PinCode,
                 Latitude = property.Latitude,
                 Longitude = property.Longitude,
+
+                // Rent Details
                 MonthlyRent = property.MonthlyRent,
                 SecurityDeposit = property.SecurityDeposit,
                 IsNegotiable = property.IsNegotiable,
                 AvailableFrom = property.AvailableFrom,
                 LeaseType = property.LeaseType,
+
+                // Amenities
                 HasLift = property.HasLift,
                 HasParking = property.HasParking,
                 HasPowerBackup = property.HasPowerBackup,
@@ -215,14 +226,20 @@ namespace RentConnect.Services.Implementations
                 HasGasPipeline = property.HasGasPipeline,
                 HasSecurity = property.HasSecurity,
                 HasInternet = property.HasInternet,
+
+                // Validation
+                IsValid = property.IsValid,
+
+                // Status
                 Status = property.Status,
+
+                // Audit
                 CreatedOn = property.CreatedOn,
                 UpdatedOn = property.UpdatedOn,
-                            Tenants = property.Tenants?
+                Tenants = property.Tenants?
                 .Select(x => MapEntityTenantDto(x))
                 .ToList() ?? new List<TenantDto>(),
 
-                IsValid = property.IsValid,
                 Documents = property.Documents?.Select(d => new Models.Dtos.Document.DocumentDto
                 {
                     File = null,
@@ -252,7 +269,6 @@ namespace RentConnect.Services.Implementations
                 TotalFloors = dto.TotalFloors,
                 CarpetAreaSqFt = dto.CarpetAreaSqFt,
                 BuiltUpAreaSqFt = dto.BuiltUpAreaSqFt,
-                IsFurnished = dto.IsFurnished,
                 FurnishingType = dto.FurnishingType,
                 NumberOfBathrooms = dto.NumberOfBathrooms,
                 NumberOfBalconies = dto.NumberOfBalconies,
@@ -291,7 +307,6 @@ namespace RentConnect.Services.Implementations
             entity.TotalFloors = dto.TotalFloors;
             entity.CarpetAreaSqFt = dto.CarpetAreaSqFt;
             entity.BuiltUpAreaSqFt = dto.BuiltUpAreaSqFt;
-            entity.IsFurnished = dto.IsFurnished;
             entity.FurnishingType = dto.FurnishingType;
             entity.NumberOfBathrooms = dto.NumberOfBathrooms;
             entity.NumberOfBalconies = dto.NumberOfBalconies;

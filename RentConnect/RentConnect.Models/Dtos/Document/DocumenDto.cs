@@ -6,6 +6,7 @@
 
     public class DocumentDto
     {
+        public long? Id { get; set; }
         public IFormFile? File { get; set; }
         public long? OwnerId { get; set; }
         public string? OwnerType { get; set; }
@@ -26,7 +27,7 @@
         public bool? IsVerified { get; set; } = true; // Default false
         public string? VerifiedBy { get; set; } = string.Empty; // Default empty
         public string? Description { get; set; } = string.Empty; // Default empty
-
+        public string?  DownloadUrl { get; set; } = string.Empty;
 
     }
 

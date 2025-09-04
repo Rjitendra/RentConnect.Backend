@@ -23,8 +23,7 @@
         public int? TotalFloors { get; set; }
         public double? CarpetAreaSqFt { get; set; }
         public double? BuiltUpAreaSqFt { get; set; }
-        public bool? IsFurnished { get; set; } = false;
-        public FurnishingType? FurnishingType { get; set; } // Enum: Unfurnished, SemiFurnished, FullyFurnished
+       public FurnishingType? FurnishingType { get; set; } // Enum: Unfurnished, SemiFurnished, FullyFurnished
         public int? NumberOfBathrooms { get; set; }
         public int? NumberOfBalconies { get; set; }
 

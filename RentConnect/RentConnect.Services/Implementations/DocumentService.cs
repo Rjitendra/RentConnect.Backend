@@ -32,9 +32,9 @@
                     {
                         OwnerId = doc.OwnerId,
                         OwnerType = doc.OwnerType,
-                        PropertyId=doc.PropertyId,
-                        LandlordId=doc.LandlordId,
-                        TenantId=doc.TenantId,
+                        PropertyId = doc.PropertyId,
+                        LandlordId = doc.LandlordId,
+                        TenantId = doc.TenantId,
                         Category = doc.Category,
                         Url = fileUrl,
                         Name = doc.File.FileName,
@@ -42,7 +42,8 @@
                         Type = doc.File.ContentType,
                         Description = doc.Description,
                         UploadedOn = DateTime.UtcNow.ToString("o"), // Keep consistent with current entity
-                        IsVerified = true // Keep consistent with current defaults
+                        IsVerified = true, // Keep consistent with current defaults
+                        DocumentIdentifier = null
                     });
                 }
 
@@ -133,6 +134,41 @@
             catch (Exception ex)
             {
                 return Result<IEnumerable<DocumentDto>>.Failure($"Failed to get documents: {ex.Message}");
+            }
+        }
+
+        public async Task<Result<IEnumerable<DocumentDto>>> GetPropertyImages(long landlordId, long propertyId)
+        {
+            try
+            {
+                var documents = await _context.Document
+                    .Where(d => d.LandlordId == landlordId &&
+                               d.PropertyId == propertyId &&
+                               d.Category == Models.Enums.DocumentCategory.PropertyImages)
+                    .ToListAsync();
+
+                var documentDtos = documents.Select(d => new DocumentDto
+                {
+                    OwnerId = d.OwnerId,
+                    OwnerType = d.OwnerType,
+                    LandlordId = d.LandlordId,
+                    PropertyId = d.PropertyId,
+                    Category = d.Category,
+                    Url = d.Url,
+                    Name = d.Name,
+                    Size = d.Size,
+                    Type = d.Type,
+                    Description = d.Description,
+                    DocumentIdentifier = d.Id.ToString(),
+                    UploadedOn = d.UploadedOn,
+                    IsVerified = d.IsVerified
+                }).ToList();
+
+                return Result<IEnumerable<DocumentDto>>.Success(documentDtos);
+            }
+            catch (Exception ex)
+            {
+                return Result<IEnumerable<DocumentDto>>.Failure($"Failed to get property images: {ex.Message}");
             }
         }
 

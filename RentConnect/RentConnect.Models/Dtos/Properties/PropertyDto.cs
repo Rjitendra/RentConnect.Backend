@@ -23,12 +23,17 @@ namespace RentConnect.Models.Dtos.Properties
         public string? BhkConfiguration { get; set; } // "1 BHK", "2 BHK"
         public int? FloorNumber { get; set; }
         public int? TotalFloors { get; set; }
-        public double? CarpetAreaSqFt { get; set; }
-        public double? BuiltUpAreaSqFt { get; set; }
-        public bool? IsFurnished { get; set; }
-        public FurnishingType? FurnishingType { get; set; } // Enum: Unfurnished, SemiFurnished, FullyFurnished
+
+
+
         public int? NumberOfBathrooms { get; set; }
         public int? NumberOfBalconies { get; set; }
+
+        // Area & Furnishing
+
+        public double? CarpetAreaSqFt { get; set; }
+        public double? BuiltUpAreaSqFt { get; set; }
+        public FurnishingType? FurnishingType { get; set; } // Enum: Unfurnished, SemiFurnished, FullyFurnished
 
         // Location
         public string? AddressLine1 { get; set; }
@@ -67,6 +72,6 @@ namespace RentConnect.Models.Dtos.Properties
         public DateTime? UpdatedOn { get; set; }
 
         // Navigation - Generic document link
-        public IList<DocumentDto> Documents { get; set; } = new List<DocumentDto>();
+        public IList<DocumentDto>? Documents { get; set; } = new List<DocumentDto>();
     }
 }
