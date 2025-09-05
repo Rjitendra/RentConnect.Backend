@@ -1,5 +1,6 @@
 ﻿namespace RentConnect.Services.Interfaces
 {
+    using RentConnect.Models.Dtos.Document;
     using RentConnect.Models.Dtos.Properties;
     using RentConnect.Models.Enums;
     using RentConnect.Services.Utility;
@@ -15,6 +16,6 @@
 
         Task<Result<long>> DeleteProperty(long Id);
 
-        Task<Result<byte[]>> DownloadPropertyFiles(DocumentCategory category, long propertyId);
+        Task<Result<IEnumerable<DocumentDto>>> DownloadPropertyFiles(DocumentCategory category, long propertyId);
     }
 }

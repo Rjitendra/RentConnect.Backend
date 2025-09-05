@@ -9,7 +9,7 @@ namespace RentConnect.API.Controller
 {
     [ApiController]
     [Route("api/[controller]")]
-   // [Authorize]
+    // [Authorize]
     public class TenantController : BaseController
     {
         private readonly ITenantService _tenantService;
@@ -102,16 +102,13 @@ namespace RentConnect.API.Controller
         /// <param name="id">Tenant ID</param>
         /// <param name="tenantDto">Updated tenant data</param>
         /// <returns>Updated tenant</returns>
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateTenant(long id, [FromBody] TenantDto tenantDto)
+        [HttpPut("update")]
+        public async Task<IActionResult> UpdateTenant(long id, [FromForm] TenantCreateRequestDto tenantDto)
         {
-            if (id <= 0)
-                return BadRequest("Invalid tenant ID");
+            if (tenantDto.Tenants.Any() == false)
+                return BadRequest("Invalid tenant");
 
-            if (tenantDto.Id != id)
-                return BadRequest("Tenant ID mismatch");
-
-            var result = await _tenantService.UpdateTenant(tenantDto);
+           var result = await _tenantService.UpdateTenant(tenantDto);
             return ProcessResult(result);
         }
 

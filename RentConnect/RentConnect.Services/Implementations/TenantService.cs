@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using RentConnect.Models.Context;
 using RentConnect.Models.Dtos.Document;
+using RentConnect.Models.Dtos.Properties;
 using RentConnect.Models.Dtos.Tenants;
 using RentConnect.Models.Entities.Documents;
 using RentConnect.Models.Entities.Tenants;
@@ -190,11 +191,21 @@ namespace RentConnect.Services.Implementations
                         await SaveTenantDocuments(tenant.Id, tenantDto.Documents);
                     }
 
+
                     // Map back to DTO for response
                     var createdDto = await MapToDto(tenant);
                     createdTenants.Add(createdDto);
                 }
 
+
+                var existingProperty = await _context.Property
+                   .FirstOrDefaultAsync(p => p.Id == request.PropertyId);
+                if (existingProperty != null)
+                {
+                    existingProperty.UpdatedOn = DateTime.UtcNow;
+                    existingProperty.Status = PropertyStatus.Listed;
+                }
+                await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
                 return Result<TenantSaveResponseDto>.Success(new TenantSaveResponseDto
@@ -211,37 +222,105 @@ namespace RentConnect.Services.Implementations
             }
         }
 
-        public async Task<Result<TenantDto>> UpdateTenant(TenantDto tenantDto)
+        public async Task<Result<TenantSaveResponseDto>> UpdateTenant(TenantCreateRequestDto request)
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                var existingTenant = await _context.Tenant
-                    .Include(t => t.Property)
-                    .Include(t => t.Landlord)
-                    .FirstOrDefaultAsync(t => t.Id == tenantDto.Id);
-
-                if (existingTenant == null)
-                    return Result<TenantDto>.NotFound();
-
-                // Validate the updated tenant data
-                var validationErrors = ValidateTenant(tenantDto);
-                if (validationErrors.Any())
+                // Apply common request-level values to all tenants
+                foreach (var tenant in request.Tenants)
                 {
-                    return Result<TenantDto>.Failure($"Validation failed: {string.Join(", ", validationErrors.Select(e => e.Message))}");
+                    tenant.PropertyId = request.PropertyId.Value;
+                    tenant.RentAmount = request.RentAmount.Value;
+                    tenant.SecurityDeposit = request.SecurityDeposit.Value;
+                    tenant.MaintenanceCharges = request.MaintenanceCharges;
+                    tenant.TenancyStartDate = request.TenancyStartDate.Value;
+                    tenant.TenancyEndDate = request.TenancyEndDate; // optional
+                    tenant.RentDueDate = request.RentDueDate.Value;
+                    tenant.LeaseDuration = request.LeaseDuration > 0 ? request.LeaseDuration : 12;
+                    tenant.NoticePeriod = request.NoticePeriod > 0 ? request.NoticePeriod : 30;
+                    tenant.LandlordId = request.LandlordId.Value;
                 }
 
-                // Update tenant properties
-                UpdateEntityFromDto(existingTenant, tenantDto);
-                existingTenant.DateModified = DateTime.UtcNow;
+                // Validate the whole tenant group
+                var groupValidationErrors = ValidateTenantGroup(request.Tenants);
+                if (groupValidationErrors.Any())
+                {
+                    return Result<TenantSaveResponseDto>.Failure(new TenantSaveResponseDto
+                    {
+                        Success = false,
+                        Message = "Validation failed",
+                        Errors = groupValidationErrors.Select(e => e.Message).ToList()
+                    });
+                }
 
-                await _context.SaveChangesAsync();
+                var updatedTenants = new List<TenantDto>();
 
-                var updatedDto = await MapToDto(existingTenant);
-                return Result<TenantDto>.Success(updatedDto);
+                foreach (var tenantDto in request.Tenants)
+                {
+                    var existingTenant = await _context.Tenant
+                        .Include(t => t.Property)
+                        .Include(t => t.Landlord)
+                        .FirstOrDefaultAsync(t => t.Id == tenantDto.Id);
+
+                    if (existingTenant == null)
+                    {
+                        return Result<TenantSaveResponseDto>.Failure(
+                            $"Tenant with Id {tenantDto.Id} not found."
+                        );
+                    }
+
+                    // Validate individual tenant
+                    var validationErrors = ValidateTenant(tenantDto);
+                    if (validationErrors.Any())
+                    {
+                        return Result<TenantSaveResponseDto>.Failure(
+                            $"Validation failed for tenant {tenantDto.Id}: " +
+                            string.Join(", ", validationErrors.Select(e => e.Message))
+                        );
+                    }
+
+                    // Update entity
+                    UpdateEntityFromDto(existingTenant, tenantDto);
+                    existingTenant.DateModified = DateTime.UtcNow;
+
+                    await _context.SaveChangesAsync();
+
+                    // Handle document updates
+                    if (tenantDto.Documents?.Any() == true)
+                    {
+                        await SaveTenantDocuments(existingTenant.Id, tenantDto.Documents);
+                    }
+
+                    // Map updated DTO
+                    var updatedDto = await MapToDto(existingTenant);
+                    updatedTenants.Add(updatedDto);
+                }
+
+                // Update property metadata
+                var existingProperty = await _context.Property
+                    .FirstOrDefaultAsync(p => p.Id == request.PropertyId);
+
+                if (existingProperty != null)
+                {
+                    existingProperty.UpdatedOn = DateTime.UtcNow;
+                    existingProperty.Status = PropertyStatus.Rented;
+                    await _context.SaveChangesAsync();
+                }
+
+                await transaction.CommitAsync();
+
+                return Result<TenantSaveResponseDto>.Success(new TenantSaveResponseDto
+                {
+                    Success = true,
+                    Message = $"Successfully updated {updatedTenants.Count} tenant(s)",
+                    Tenants = updatedTenants
+                });
             }
             catch (Exception ex)
             {
-                return Result<TenantDto>.Failure($"Failed to update tenant: {ex.Message}");
+                await transaction.RollbackAsync();
+                return Result<TenantSaveResponseDto>.Failure($"Failed to update tenants: {ex.Message}");
             }
         }
 
@@ -601,8 +680,8 @@ namespace RentConnect.Services.Implementations
             //if (string.IsNullOrWhiteSpace(tenant.AadhaarNumber) || !IsValidAadhaar(tenant.AadhaarNumber))
             //    errors.Add(new TenantValidationErrorDto { Field = "aadhaarNumber", Message = "Valid 12-digit Aadhaar number is required" });
 
-            //if (string.IsNullOrWhiteSpace(tenant.PANNumber) || !IsValidPAN(tenant.PANNumber))
-            //    errors.Add(new TenantValidationErrorDto { Field = "panNumber", Message = "Valid PAN number is required (e.g., ABCDE1234F)" });
+            //if (string.IsNullOrWhiteSpace(tenant.PanNumber) || !IsValidPAN(tenant.PanNumber))
+            //    errors.Add(new TenantValidationErrorDto { Field = "PanNumber", Message = "Valid PAN number is required (e.g., ABCDE1234F)" });
 
             if (tenant.PropertyId <= 0)
                 errors.Add(new TenantValidationErrorDto { Field = "propertyId", Message = "Property selection is required" });
@@ -692,9 +771,9 @@ namespace RentConnect.Services.Implementations
                 DOB = tenant.DOB.Value,
                 Occupation = tenant.Occupation,
                 AadhaarNumber = tenant.AadhaarNumber,
-                PANNumber = tenant.PanNumber,
+                PanNumber = tenant.PanNumber,
                 TenancyStartDate = tenant.TenancyStartDate.Value,
-                TenancyEndDate = tenant.TenancyEndDate  ,
+                TenancyEndDate = tenant.TenancyEndDate,
                 RentDueDate = tenant.RentDueDate.Value,
                 RentAmount = tenant.RentAmount.Value,
                 SecurityDeposit = tenant.SecurityDeposit.Value,
@@ -746,7 +825,7 @@ namespace RentConnect.Services.Implementations
                 DOB = dto.DOB,
                 Occupation = dto.Occupation,
                 AadhaarNumber = dto.AadhaarNumber,
-                PanNumber = dto.PANNumber,
+                PanNumber = dto.PanNumber,
                 TenancyStartDate = request.TenancyStartDate,
                 TenancyEndDate = request.TenancyEndDate,
                 RentDueDate = request.RentDueDate,
@@ -772,7 +851,7 @@ namespace RentConnect.Services.Implementations
             entity.DOB = dto.DOB;
             entity.Occupation = dto.Occupation;
             entity.AadhaarNumber = dto.AadhaarNumber;
-            entity.PanNumber = dto.PANNumber;
+            entity.PanNumber = dto.PanNumber;
             entity.TenancyStartDate = dto.TenancyStartDate;
             entity.TenancyEndDate = dto.TenancyEndDate;
             entity.RentDueDate = dto.RentDueDate;
@@ -797,7 +876,7 @@ namespace RentConnect.Services.Implementations
                 DOB = dto.DOB,
                 Occupation = dto.Occupation,
                 AadhaarNumber = dto.AadhaarNumber,
-                PANNumber = dto.PANNumber,
+                PanNumber = dto.PanNumber,
                 TenancyStartDate = request.TenancyStartDate.Value,
                 TenancyEndDate = request.TenancyEndDate,
                 RentDueDate = request.RentDueDate.Value,

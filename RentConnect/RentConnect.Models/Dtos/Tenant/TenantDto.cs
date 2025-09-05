@@ -33,7 +33,7 @@
 
         // Government IDs
         public string? AadhaarNumber { get; set; }
-        public string? PANNumber { get; set; }
+        public string? PanNumber { get; set; }
         public string? DrivingLicenseNumber { get; set; }
         public string? VoterIdNumber { get; set; }
 

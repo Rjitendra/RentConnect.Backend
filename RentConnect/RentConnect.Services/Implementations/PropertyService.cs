@@ -26,14 +26,14 @@ namespace RentConnect.Services.Implementations
             try
             {
                 var properties = await _context.Property
-                    .Where(p => p.LandlordId == landlordId)
+                    .Where(p => p.LandlordId == landlordId && p.IsDeleted == false)
                     .Include(p => p.Tenants).ThenInclude(x => x.TenantChildren)
                     .ToListAsync();
                 var documents = await this._context.Document.Where(x => x.OwnerId == landlordId).ToArrayAsync();
 
                 foreach (var property in properties)
                 {
-                    property.Documents = documents.Where(d => d.PropertyId == property.Id).ToList(); ;
+                    property.Documents = documents.Where(d => d.PropertyId == property.Id && d.LandlordId == property.LandlordId).ToList(); ;
                 }
 
                 var propertyDtos = properties.Select(MapToDto).ToList();
@@ -51,7 +51,7 @@ namespace RentConnect.Services.Implementations
             {
                 var property = await _context.Property
                     .Include(p => p.Tenants)
-                    .FirstOrDefaultAsync(p => p.Id == id);
+                    .FirstOrDefaultAsync(p => p.Id == id && p.IsDeleted == false);
 
                 if (property == null)
                     return Result<PropertyDto>.Failure("Property not found");
@@ -93,7 +93,7 @@ namespace RentConnect.Services.Implementations
             {
                 var existingProperty = await _context.Property
                    .Include(p => p.Tenants)
-                    .FirstOrDefaultAsync(p => p.Id == propertyDto.Id);
+                    .FirstOrDefaultAsync(p => p.Id == propertyDto.Id && p.IsDeleted == false);
 
                 if (existingProperty == null)
                     return Result<PropertyDto>.Failure("Property not found");
@@ -117,7 +117,7 @@ namespace RentConnect.Services.Implementations
         {
             try
             {
-                var property = await _context.Property.Include(x => x.Tenants).ThenInclude(x => x.TenantChildren).FirstOrDefaultAsync(p => p.Id == id); ;
+                var property = await _context.Property.Include(x => x.Tenants).ThenInclude(x => x.TenantChildren).FirstOrDefaultAsync(p => p.Id == id && p.IsDeleted == false); ;
                 if (property == null)
                 {
                     return Result<long>.Failure("Property not found");
@@ -135,7 +135,8 @@ namespace RentConnect.Services.Implementations
                 }
 
                 // Soft delete - you might want to implement a IsDeleted flag instead
-                _context.Property.Remove(property);
+                property.IsDeleted = true;
+                _context.Property.Update(property);
                 await _context.SaveChangesAsync();
 
                 return Result<long>.Success(id);
@@ -146,33 +147,38 @@ namespace RentConnect.Services.Implementations
             }
         }
 
-        public async Task<Result<byte[]>> DownloadPropertyFiles(DocumentCategory category, long propertyId)
+        public async Task<Result<IEnumerable<DocumentDto>>> DownloadPropertyFiles(DocumentCategory category, long propertyId)
         {
             try
             {
                 var documents = await _context.Document
-                    .Where(d => d.OwnerId == propertyId &&
-                               d.OwnerType == "Property" &&
+                    .Where(d => d.PropertyId == propertyId &&
                                d.Category == category)
                     .ToListAsync();
 
-                if (!documents.Any())
-                    return Result<byte[]>.Failure("No documents found for the specified criteria");
+                var documentDtos = documents.Select(d => new DocumentDto
+                {
+                    Id = d.Id,
+                    OwnerId = d.OwnerId,
+                    OwnerType = d.OwnerType,
+                    LandlordId = d.LandlordId,
+                    PropertyId = d.PropertyId,
+                    Category = d.Category,
+                    Url = d.Url,
+                    Name = d.Name,
+                    Size = d.Size,
+                    Type = d.Type,
+                    Description = d.Description,
+                    DocumentIdentifier = d.Id.ToString(),
+                    UploadedOn = d.UploadedOn,
+                    IsVerified = d.IsVerified
+                }).ToList();
 
-                // For now, return the first document as bytes
-                // You might want to implement a ZIP creation logic here for multiple files
-                var firstDoc = documents.First();
-                var filePath = Path.Combine("wwwroot", firstDoc.Url?.TrimStart('/') ?? "");
-
-                if (!File.Exists(filePath))
-                    return Result<byte[]>.Failure("File not found on disk");
-
-                var fileBytes = await File.ReadAllBytesAsync(filePath);
-                return Result<byte[]>.Success(fileBytes);
+                return Result<IEnumerable<DocumentDto>>.Success(documentDtos);
             }
             catch (Exception ex)
             {
-                return Result<byte[]>.Failure($"Failed to download files: {ex.Message}");
+                return Result<IEnumerable<DocumentDto>>.Failure($"Failed to get property images: {ex.Message}");
             }
         }
 
@@ -242,15 +248,21 @@ namespace RentConnect.Services.Implementations
 
                 Documents = property.Documents?.Select(d => new Models.Dtos.Document.DocumentDto
                 {
-                    File = null,
+                    Id = d.Id,
                     OwnerId = d.OwnerId,
                     OwnerType = d.OwnerType,
+                    LandlordId = d.LandlordId,
+                    PropertyId = d.PropertyId,
                     Category = d.Category,
                     Url = d.Url,
                     Name = d.Name,
-                    DocumentIdentifier = d.DocumentIdentifier,
                     Size = d.Size,
-                    Type = d.Type
+                    Type = d.Type,
+                    Description = d.Description,
+                    DocumentIdentifier = d.Id.ToString(),
+                    UploadedOn = d.UploadedOn,
+                    IsVerified = d.IsVerified,
+                    File=null
 
                 }).ToList() ?? new List<Models.Dtos.Document.DocumentDto>()
             };
@@ -365,7 +377,7 @@ namespace RentConnect.Services.Implementations
 
                 // Government IDs
                 AadhaarNumber = tenant.AadhaarNumber,
-                PANNumber = tenant.PanNumber, // entity → dto naming difference
+                PanNumber = tenant.PanNumber, // entity → dto naming difference
                 DrivingLicenseNumber = tenant.DrivingLicenseNumber,
                 VoterIdNumber = tenant.VoterIdNumber,
 

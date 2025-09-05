@@ -13,7 +13,7 @@
         Task<Result<IEnumerable<TenantDto>>> GetTenantsByProperty(long propertyId);
         Task<Result<IEnumerable<TenantDto>>> GetTenantsByLandlord(long landlordId);
         Task<Result<TenantSaveResponseDto>> CreateTenants(TenantCreateRequestDto request);
-        Task<Result<TenantDto>> UpdateTenant(TenantDto tenantDto);
+        Task<Result<TenantSaveResponseDto>> UpdateTenant(TenantCreateRequestDto tenantDto);
         Task<Result<bool>> DeleteTenant(long id);
 
         // Onboarding Operations

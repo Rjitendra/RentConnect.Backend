@@ -4,6 +4,7 @@
     using Microsoft.EntityFrameworkCore;
     using RentConnect.Models.Context;
     using RentConnect.Models.Dtos.Document;
+    using RentConnect.Models.Dtos.Properties;
     using RentConnect.Models.Entities.Documents;
     using RentConnect.Services.Interfaces;
     using RentConnect.Services.Utility;
@@ -17,12 +18,12 @@
             _context = context;
         }
 
-        public async Task<Result> UploadDocuments(DocumentUploadRequestDto request)
+        public async Task<Result<IEnumerable<DocumentDto>>> UploadDocuments(DocumentUploadRequestDto request)
         {
             try
             {
                 if (request.Documents == null || !request.Documents.Any())
-                    return Result.Failure("No files received");
+                    return Result<IEnumerable<DocumentDto>>.Failure("Property not found");
 
                 var savedDocs = new List<Document>();
                 foreach (var doc in request.Documents.Where(d => d.File != null && d.File.Length > 0))
@@ -48,40 +49,72 @@
                 }
 
                 if (!savedDocs.Any())
-                    return Result.Failure("No valid files to upload");
+                    return Result<IEnumerable<DocumentDto>>.Failure("No valid files to upload");
 
                 await _context.Document.AddRangeAsync(savedDocs);
                 await _context.SaveChangesAsync();
-
-                return Result.Success();
+                // Map Document -> DocumentDto
+                var docsDto = savedDocs.Select(d => new DocumentDto
+                {
+                    Id = d.Id,
+                    OwnerId = d.OwnerId,
+                    OwnerType = d.OwnerType,
+                    PropertyId = d.PropertyId,
+                    LandlordId = d.LandlordId,
+                    TenantId = d.TenantId,
+                    Category = d.Category,
+                    Url = d.Url,
+                    Name = d.Name,
+                    Size = d.Size,
+                    Type = d.Type,
+                    Description = d.Description,
+                    UploadedOn = d.UploadedOn,
+                    IsVerified = d.IsVerified,
+                    DocumentIdentifier = d.DocumentIdentifier
+                }).ToList();
+                return Result<IEnumerable<DocumentDto>>.Success(docsDto);
             }
             catch (Exception ex)
             {
-                return Result.Failure($"Upload failed: {ex.Message}");
+                return Result<IEnumerable<DocumentDto>>.Failure($"Upload failed: {ex.Message}");
             }
         }
 
-        public async Task<Result<byte[]>> DownloadDocument(long documentId)
+        public async Task<Result<(byte[] fileBytes, string fileName, string contentType)>> DownloadDocument(long documentId)
         {
             try
             {
                 var document = await _context.Document.FindAsync(documentId);
                 if (document == null)
-                    return Result<byte[]>.Failure("Document not found");
+                    return Result<(byte[], string, string)>.Failure("Document not found");
 
                 var filePath = Path.Combine("wwwroot", document.Url?.TrimStart('/') ?? "");
-
                 if (!File.Exists(filePath))
-                    return Result<byte[]>.Failure("File not found on disk");
+                    return Result<(byte[], string, string)>.Failure("File not found on disk");
 
                 var fileBytes = await File.ReadAllBytesAsync(filePath);
-                return Result<byte[]>.Success(fileBytes);
+
+                var ext = Path.GetExtension(filePath)?.ToLowerInvariant();
+                var contentType = ext switch
+                {
+                    ".pdf" => "application/pdf",
+                    ".jpg" => "image/jpeg",
+                    ".jpeg" => "image/jpeg",
+                    ".png" => "image/png",
+                    ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    _ => "application/octet-stream"
+                };
+
+                var fileName = Path.GetFileName(filePath);
+
+                return Result<(byte[], string, string)>.Success((fileBytes, fileName, contentType));
             }
             catch (Exception ex)
             {
-                return Result<byte[]>.Failure($"Failed to download document: {ex.Message}");
+                return Result<(byte[], string, string)>.Failure($"Failed to download document: {ex.Message}");
             }
         }
+
 
         public async Task<Result> DeleteDocument(long documentId)
         {

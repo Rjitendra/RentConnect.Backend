@@ -4,8 +4,9 @@
     using RentConnect.Services.Utility;
     public interface IDocumentService
     {
-        Task<Result> UploadDocuments(DocumentUploadRequestDto request);
-        Task<Result<byte[]>> DownloadDocument(long documentId);
+        Task<Result<IEnumerable<DocumentDto>>> UploadDocuments(DocumentUploadRequestDto request);
+        // Tuple element names MUST match in implementation
+        Task<Result<(byte[] fileBytes, string fileName, string contentType)>> DownloadDocument(long documentId);
         Task<Result> DeleteDocument(long documentId);
         Task<Result<IEnumerable<DocumentDto>>> GetDocumentsByOwner(long ownerId, string ownerType);
 
