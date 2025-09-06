@@ -13,7 +13,7 @@ namespace RentConnect.API.Extentions
             services.AddTransient<IDocumentService, DocumentService>();
             services.AddTransient<ITenantService, TenantService>();
             //services.AddTransient<IUserService, UserService>();
-            //services.AddTransient<ITicketService, TicketService>();
+            services.AddTransient<ITicketService, TicketService>();
             //services.AddTransient<IPaymentService, PaymentService>();
             //services.AddTransient<ITaskService, TaskService>();
         }

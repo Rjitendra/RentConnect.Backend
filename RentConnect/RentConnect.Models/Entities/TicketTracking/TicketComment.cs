@@ -3,13 +3,11 @@
     using RentConnect.Models.Enums;
     using System.ComponentModel.DataAnnotations;
 
-    public class TicketStatus : BaseEntity
+    public class TicketComment : BaseEntity
     {
         public long? TicketId { get; set; }
 
-        public TicketStatusType? Status { get; set; }
-
-        [MaxLength(1000)]
+        [MaxLength(2000)]
         public string? Comment { get; set; }
 
         public long? AddedBy { get; set; }
@@ -21,7 +19,8 @@
 
         public DateTime? DateCreated { get; set; }
 
-        // Navigation property
+        // Navigation properties
         public virtual Ticket? Ticket { get; set; }
+        public virtual ICollection<TicketAttachment> Attachments { get; set; } = new List<TicketAttachment>();
     }
 }

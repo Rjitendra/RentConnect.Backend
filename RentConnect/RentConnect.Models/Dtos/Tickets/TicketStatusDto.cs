@@ -1,27 +1,16 @@
-﻿namespace RentConnect.Models.Entities.TicketTracking
+﻿namespace RentConnect.Models.Dtos.Tickets
 {
     using RentConnect.Models.Enums;
-    using System.ComponentModel.DataAnnotations;
 
-    public class TicketStatus : BaseEntity
+    public class TicketStatusDto
     {
+        public long? Id { get; set; }
         public long? TicketId { get; set; }
-
         public TicketStatusType? Status { get; set; }
-
-        [MaxLength(1000)]
         public string? Comment { get; set; }
-
         public long? AddedBy { get; set; }
-
-        [MaxLength(100)]
         public string? AddedByName { get; set; }
-
         public CreatedByType? AddedByType { get; set; }
-
         public DateTime? DateCreated { get; set; }
-
-        // Navigation property
-        public virtual Ticket? Ticket { get; set; }
     }
 }

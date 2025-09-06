@@ -29,6 +29,8 @@
 
         public virtual DbSet<Ticket> Ticket { get; set; }
         public virtual DbSet<TicketStatus> TicketStatus { get; set; }
+        public virtual DbSet<TicketComment> TicketComment { get; set; }
+        public virtual DbSet<TicketAttachment> TicketAttachment { get; set; }
 
         public virtual DbSet<TenantChildren> TenantChildren { get; set; } // no where we featch Tenant children to show in ui ,it will keep record for who are below 18 year,if future require to make relationship with Tenant then add  TenantChildren as property and make foreginkey rleationship to tenantgroup id
         public virtual DbSet<RentPayment> RentPayment { get; set; }
@@ -51,6 +53,8 @@
             modelBuilder.Entity<Tenant>().ToTable("Tenant", "dbo");
             modelBuilder.Entity<Ticket>().ToTable("Ticket", "dbo");
             modelBuilder.Entity<TicketStatus>().ToTable("TicketStatus", "dbo");
+            modelBuilder.Entity<TicketComment>().ToTable("TicketComment", "dbo");
+            modelBuilder.Entity<TicketAttachment>().ToTable("TicketAttachment", "dbo");
             modelBuilder.Entity<TenantChildren>().ToTable("TenantChildren", "dbo");
             modelBuilder.Entity<RentPayment>().ToTable("RentPayment", "dbo");
             modelBuilder.Entity<RentLatePaymentCharge>().ToTable("RentLatePaymentCharge", "dbo");
@@ -93,19 +97,35 @@
                 .HasOne(t => t.Tenant)
                 .WithMany(te => te.Tickets)
                 .HasForeignKey(t => t.TenantId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.SetNull);
 
-            // Ticket → Status (1:N)
-            modelBuilder.Entity<Ticket>()
-                .HasMany(a => a.Status)
-                .WithOne()
-                .HasForeignKey(c => c.TicketId);
+            // Ticket → StatusHistory (1:N)
+            modelBuilder.Entity<TicketStatus>()
+                .HasOne(ts => ts.Ticket)
+                .WithMany(t => t.StatusHistory)
+                .HasForeignKey(ts => ts.TicketId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Ticket → Property (Many-to-1)
             modelBuilder.Entity<Ticket>()
-                .HasOne(a => a.Property)
+                .HasOne(t => t.Property)
                 .WithMany()
-                .HasForeignKey(c => c.PropertyId);
+                .HasForeignKey(t => t.PropertyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Ticket → Comments (1:N)
+            modelBuilder.Entity<TicketComment>()
+                .HasOne(tc => tc.Ticket)
+                .WithMany(t => t.Comments)
+                .HasForeignKey(tc => tc.TicketId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // TicketComment → Attachments (1:N)
+            modelBuilder.Entity<TicketAttachment>()
+                .HasOne(ta => ta.Comment)
+                .WithMany(tc => tc.Attachments)
+                .HasForeignKey(ta => ta.CommentId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // ApplicationUser → Roles
             modelBuilder.Entity<ApplicationUser>()

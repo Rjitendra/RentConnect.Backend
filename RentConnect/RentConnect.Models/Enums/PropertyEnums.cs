@@ -46,5 +46,49 @@
         ProfilePhoto,
         EmploymentProof,
         PersonPhoto,
+        Other
+    }
+
+    // Ticket related enums
+    public enum TicketCategory
+    {
+        Electricity,
+        Plumbing,
+        Rent,
+        Maintenance,
+        Appliances,
+        Security,
+        Cleaning,
+        Pest,
+        Noise,
+        Parking,
+        Internet,
+        Heating,
+        AirConditioning,
+        Other
+    }
+
+    public enum TicketPriority
+    {
+        Low,
+        Medium,
+        High,
+        Urgent
+    }
+
+    public enum TicketStatusType
+    {
+        Open,
+        InProgress,
+        Pending,
+        Resolved,
+        Closed,
+        Cancelled
+    }
+
+    public enum CreatedByType
+    {
+        Landlord,
+        Tenant
     }
 }
