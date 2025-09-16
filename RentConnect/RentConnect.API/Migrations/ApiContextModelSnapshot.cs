@@ -635,8 +635,23 @@ namespace RentConnect.API.Migrations
                     b.Property<DateTime?>("AcknowledgeDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool?>("AgreementAccepted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("AgreementAcceptedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("AgreementAcceptedDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime?>("AgreementDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("AgreementEmailDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool?>("AgreementEmailSent")
+                        .HasColumnType("bit");
 
                     b.Property<bool?>("AgreementSigned")
                         .HasColumnType("bit");
@@ -645,9 +660,6 @@ namespace RentConnect.API.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("AlternatePhoneNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("BackgroundCheckFileUrl")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("BaseVersionId")
@@ -664,9 +676,6 @@ namespace RentConnect.API.Migrations
 
                     b.Property<DateTime?>("DateModified")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("DepositReceiptUrl")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("DrivingLicenseNumber")
                         .HasColumnType("nvarchar(max)");
@@ -743,9 +752,6 @@ namespace RentConnect.API.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool?>("NeedsOnboarding")
-                        .HasColumnType("bit");
-
                     b.Property<int?>("NoticePeriod")
                         .HasColumnType("int");
 
@@ -781,9 +787,6 @@ namespace RentConnect.API.Migrations
 
                     b.Property<DateTime?>("RentDueDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("RentGuideFileUrl")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal?>("SecurityDeposit")
                         .HasColumnType("decimal(18,2)");

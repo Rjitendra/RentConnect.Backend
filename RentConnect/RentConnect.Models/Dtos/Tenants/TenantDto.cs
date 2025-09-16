@@ -58,6 +58,11 @@
         public bool? AgreementSigned { get; set; }
         public DateTime? AgreementDate { get; set; }
         public string? AgreementUrl { get; set; }
+        public bool? AgreementEmailSent { get; set; }
+        public DateTime? AgreementEmailDate { get; set; }
+        public bool? AgreementAccepted { get; set; }
+        public DateTime? AgreementAcceptedDate { get; set; }
+        public string? AgreementAcceptedBy { get; set; }
         public bool? OnboardingEmailSent { get; set; }
         public DateTime? OnboardingEmailDate { get; set; }
         public bool? OnboardingCompleted { get; set; }

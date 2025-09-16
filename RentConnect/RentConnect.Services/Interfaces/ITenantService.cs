@@ -20,6 +20,8 @@
         Task<Result<IEnumerable<TenantDto>>> GetEligibleTenantsForOnboarding(long landlordId, long propertyId);
         Task<Result<int>> SendOnboardingEmails(long landlordId, long propertyId);
         Task<Result<string>> CreateAgreement(AgreementCreateRequestDto request);
+        Task<Result<bool>> AcceptAgreement(long tenantId);
+        Task<Result<AgreementStatusDto>> GetAgreementStatus(long tenantId);
 
         // Children/Family Management
         Task<Result<TenantChildren>> AddTenantChild(long tenantId, TenantChildren child);

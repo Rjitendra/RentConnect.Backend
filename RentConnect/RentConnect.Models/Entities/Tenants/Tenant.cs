@@ -36,7 +36,7 @@
 
         // Govt. IDs
         public string? AadhaarNumber { get; set; }
-        public string? PanNumber { get; set; } 
+        public string? PanNumber { get; set; }
         public string? DrivingLicenseNumber { get; set; }
         public string? VoterIdNumber { get; set; }
 
@@ -57,10 +57,6 @@
         public int? LeaseDuration { get; set; } // in months
         public int? NoticePeriod { get; set; } // in days
 
-        // File references
-        //public string? BackgroundCheckFileUrl { get; set; }
-        //public string? RentGuideFileUrl { get; set; }
-        //public string? DepositReceiptUrl { get; set; }
 
         // Acknowledgement & verification
         public bool? IsAcknowledge { get; set; }
@@ -92,6 +88,11 @@
         public bool? AgreementSigned { get; set; }
         public DateTime? AgreementDate { get; set; }
         public string? AgreementUrl { get; set; }
+        public bool? AgreementEmailSent { get; set; }
+        public DateTime? AgreementEmailDate { get; set; }
+        public bool? AgreementAccepted { get; set; }
+        public DateTime? AgreementAcceptedDate { get; set; }
+        public string? AgreementAcceptedBy { get; set; }
 
 
         // Navigation collections

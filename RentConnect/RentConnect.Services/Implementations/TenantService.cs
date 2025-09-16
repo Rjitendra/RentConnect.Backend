@@ -1,18 +1,16 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
-using RentConnect.Models.Context;
-using RentConnect.Models.Dtos.Document;
-using RentConnect.Models.Dtos.Properties;
-using RentConnect.Models.Dtos.Tenants;
-using RentConnect.Models.Entities.Documents;
-using RentConnect.Models.Entities.Tenants;
-using RentConnect.Models.Enums;
-using RentConnect.Services.Interfaces;
-using RentConnect.Services.Utility;
-using System.Text.RegularExpressions;
-
-namespace RentConnect.Services.Implementations
+﻿namespace RentConnect.Services.Implementations
 {
+    using Microsoft.AspNetCore.Http;
+    using Microsoft.EntityFrameworkCore;
+    using RentConnect.Models.Context;
+    using RentConnect.Models.Dtos;
+    using RentConnect.Models.Dtos.Document;
+    using RentConnect.Models.Dtos.Tenants;
+    using RentConnect.Models.Entities.Tenants;
+    using RentConnect.Models.Enums;
+    using RentConnect.Services.Interfaces;
+    using RentConnect.Services.Utility;
+    using System.Text.RegularExpressions;
     public class TenantService : ITenantService
     {
         private readonly ApiContext _context;
@@ -473,11 +471,123 @@ namespace RentConnect.Services.Implementations
 
                 await _context.SaveChangesAsync();
 
+                // Send agreement email to tenant
+                await SendAgreementEmail(tenant);
+
                 return Result<string>.Success(agreementUrl);
             }
             catch (Exception ex)
             {
                 return Result<string>.Failure($"Failed to create agreement: {ex.Message}");
+            }
+        }
+
+        public async Task<Result<bool>> AcceptAgreement(long tenantId)
+        {
+            try
+            {
+                var tenant = await _context.Tenant
+                    .Include(t => t.Property)
+                    .Include(t => t.Landlord)
+                    .FirstOrDefaultAsync(t => t.Id == tenantId);
+
+                if (tenant == null)
+                    return Result<bool>.NotFound();
+
+                // Check if tenant is primary tenant
+                if (!tenant.IsPrimary.HasValue || !tenant.IsPrimary.Value)
+                    return Result<bool>.Failure("Only primary tenant can accept the agreement");
+
+                // Check if agreement exists
+                if (!tenant.AgreementSigned.HasValue || !tenant.AgreementSigned.Value)
+                    return Result<bool>.Failure("No agreement found for this tenant");
+
+                // Check if already accepted
+                if (tenant.AgreementAccepted.HasValue && tenant.AgreementAccepted.Value)
+                    return Result<bool>.Failure("Agreement has already been accepted");
+
+                // Accept the agreement
+                tenant.AgreementAccepted = true;
+                tenant.AgreementAcceptedDate = DateTime.UtcNow;
+                tenant.AgreementAcceptedBy = tenant.Name;
+                tenant.DateModified = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                // Send notification to landlord about agreement acceptance
+                await SendAgreementAcceptanceNotificationToLandlord(tenant);
+
+                return Result<bool>.Success(true);
+            }
+            catch (Exception ex)
+            {
+                return Result<bool>.Failure($"Failed to accept agreement: {ex.Message}");
+            }
+        }
+
+        public async Task<Result<AgreementStatusDto>> GetAgreementStatus(long tenantId)
+        {
+            try
+            {
+                var tenant = await _context.Tenant
+                    .Include(t => t.Property)
+                    .Include(t => t.Landlord)
+                    .FirstOrDefaultAsync(t => t.Id == tenantId);
+
+                if (tenant == null)
+                    return Result<AgreementStatusDto>.NotFound();
+
+                // Find the primary tenant in the same group
+                var primaryTenant = await _context.Tenant
+                    .FirstOrDefaultAsync(t => t.TenantGroup == tenant.TenantGroup &&
+                                              t.IsPrimary.HasValue && t.IsPrimary.Value);
+
+                var status = new AgreementStatusDto
+                {
+                    TenantId = tenant.Id,
+                    TenantName = tenant.Name,
+                    TenantGroup = tenant.TenantGroup,
+                    IsPrimaryTenant = tenant.IsPrimary.HasValue && tenant.IsPrimary.Value,
+                    AgreementCreated = tenant.AgreementSigned.HasValue && tenant.AgreementSigned.Value,
+                    AgreementDate = tenant.AgreementDate,
+                    AgreementEmailSent = tenant.AgreementEmailSent.HasValue && tenant.AgreementEmailSent.Value,
+                    AgreementEmailDate = tenant.AgreementEmailDate,
+                    AgreementAccepted = primaryTenant?.AgreementAccepted.HasValue == true && primaryTenant.AgreementAccepted.Value,
+                    AgreementAcceptedDate = primaryTenant?.AgreementAcceptedDate,
+                    AgreementAcceptedBy = primaryTenant?.AgreementAcceptedBy
+                };
+
+                // Determine if this tenant can accept agreement (only primary tenant can)
+                status.CanAcceptAgreement = status.IsPrimaryTenant &&
+                                            status.AgreementCreated &&
+                                            !status.AgreementAccepted;
+
+                // Determine if this tenant can login
+                status.CanLogin = status.AgreementAccepted;
+
+                // Set appropriate message
+                if (!status.AgreementCreated)
+                {
+                    status.Message = "Agreement not yet created by landlord.";
+                }
+                else if (status.IsPrimaryTenant && !status.AgreementAccepted)
+                {
+                    status.Message = "Please accept the agreement to enable access for all family members.";
+                }
+                else if (!status.IsPrimaryTenant && !status.AgreementAccepted)
+                {
+                    status.Message = "Waiting for primary tenant to accept the agreement.";
+                }
+                else
+                {
+                    status.Message = "Agreement accepted. Full access granted.";
+                }
+
+                return Result<AgreementStatusDto>.Success(status);
+            }
+            catch (Exception ex)
+            {
+                return Result<AgreementStatusDto>.Failure($"Failed to get agreement status: {ex.Message}");
             }
         }
 
@@ -744,6 +854,183 @@ namespace RentConnect.Services.Implementations
 
         #endregion
 
+        #region Agreement Email Methods
+
+        private async Task SendAgreementEmail(Tenant tenant)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(tenant.Email))
+                    return;
+
+                var mailRequest = new MailRequestDto
+                {
+                    ToEmail = tenant.Email,
+                    Subject = "Rental Agreement Created - Action Required",
+                    Body = GenerateAgreementEmailBody(tenant)
+                };
+
+                var emailResult = await _mailService.SendEmailAsync(mailRequest);
+
+                if (emailResult.IsSuccess)
+                {
+                    // Update tenant with email sent status
+                    tenant.AgreementEmailSent = true;
+                    tenant.AgreementEmailDate = DateTime.UtcNow;
+                    await _context.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail the agreement creation
+                Console.WriteLine($"Failed to send agreement email to tenant {tenant.Id}: {ex.Message}");
+            }
+        }
+
+        private string GenerateAgreementEmailBody(Tenant tenant)
+        {
+            return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background-color: #4CAF50; color: white; padding: 20px; text-align: center; }}
+        .content {{ padding: 20px; background-color: #f9f9f9; }}
+        .details {{ background-color: white; padding: 15px; margin: 10px 0; border-radius: 5px; }}
+        .footer {{ text-align: center; padding: 20px; color: #666; }}
+        .button {{ display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px; margin: 10px 0; }}
+        .warning {{ background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 15px 0; }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <h1>Rental Agreement Created</h1>
+        </div>
+        <div class='content'>
+            <p>Dear {tenant.Name},</p>
+            
+            <p>Your rental agreement has been created and is ready for your review and acceptance.</p>
+            
+            <div class='details'>
+                <h3>Agreement Details:</h3>
+                <p><strong>Property:</strong> {tenant.Property?.Title} - {tenant.Property?.Locality}, {tenant.Property?.City}</p>
+                <p><strong>Tenancy Start Date:</strong> {tenant.TenancyStartDate:dd MMM yyyy}</p>
+                <p><strong>Tenancy End Date:</strong> {tenant.TenancyEndDate:dd MMM yyyy}</p>
+                <p><strong>Monthly Rent:</strong> ₹{tenant.RentAmount:N0}</p>
+                <p><strong>Security Deposit:</strong> ₹{tenant.SecurityDeposit:N0}</p>
+                <p><strong>Lease Duration:</strong> {tenant.LeaseDuration} months</p>
+            </div>
+            
+            <div class='warning'>
+                <h4>⚠️ Important Notice:</h4>
+                <p>As the <strong>primary tenant</strong>, you must accept this agreement before any family members can access the tenant portal. Other family members will not be able to log in until you have accepted the agreement.</p>
+            </div>
+            
+            <p>Please log in to your tenant portal to review and accept the agreement:</p>
+            
+            <div style='text-align: center;'>
+                <a href='#' class='button'>Login to Tenant Portal</a>
+            </div>
+            
+            <p>If you have any questions about the agreement terms, please contact your landlord or our support team.</p>
+        </div>
+        <div class='footer'>
+            <p>Thank you for choosing RentConnect</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>";
+        }
+
+        private async Task SendAgreementAcceptanceNotificationToLandlord(Tenant tenant)
+        {
+            // need to remove below code 
+            var email = "jitendrabehera64@gmail.com";
+            try
+            {
+                if (email == null)
+                    return;
+
+                var mailRequest = new MailRequestDto
+                {
+                    ToEmail = email,
+                    Subject = $"Agreement Accepted - {tenant.Name} ({tenant.Property?.Title})",
+                    Body = GenerateLandlordNotificationEmailBody(tenant)
+                };
+
+                await _mailService.SendEmailAsync(mailRequest);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail the agreement acceptance
+                Console.WriteLine($"Failed to send landlord notification for tenant {tenant.Id}: {ex.Message}");
+            }
+        }
+
+        private string GenerateLandlordNotificationEmailBody(Tenant tenant)
+        {
+            return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background-color: #2196F3; color: white; padding: 20px; text-align: center; }}
+        .content {{ padding: 20px; background-color: #f9f9f9; }}
+        .details {{ background-color: white; padding: 15px; margin: 10px 0; border-radius: 5px; }}
+        .footer {{ text-align: center; padding: 20px; color: #666; }}
+        .success {{ background-color: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; margin: 15px 0; }}
+        .button {{ display: inline-block; padding: 12px 24px; background-color: #2196F3; color: white; text-decoration: none; border-radius: 5px; margin: 10px 0; }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <h1>🎉 Agreement Accepted!</h1>
+        </div>
+        <div class='content'>
+            <div class='success'>
+                <h3>✅ Great News!</h3>
+                <p>Your tenant <strong>{tenant.Name}</strong> has accepted the rental agreement. You can now proceed with the onboarding process.</p>
+            </div>
+            
+            <div class='details'>
+                <h3>Tenant Details:</h3>
+                <p><strong>Primary Tenant:</strong> {tenant.Name}</p>
+                <p><strong>Email:</strong> {tenant.Email}</p>
+                <p><strong>Property:</strong> {tenant.Property?.Title} - {tenant.Property?.Locality}, {tenant.Property?.City}</p>
+                <p><strong>Agreement Accepted:</strong> {tenant.AgreementAcceptedDate:dd MMM yyyy 'at' HH:mm}</p>
+                <p><strong>Tenancy Start:</strong> {tenant.TenancyStartDate:dd MMM yyyy}</p>
+                <p><strong>Monthly Rent:</strong> ₹{tenant.RentAmount:N0}</p>
+            </div>
+            
+            <div class='success'>
+                <h4>Next Steps:</h4>
+                <p>1. You can now send onboarding emails to all eligible tenants</p>
+                <p>2. All family members will now have access to the tenant portal</p>
+                <p>3. The tenancy is ready to begin on {tenant.TenancyStartDate:dd MMM yyyy}</p>
+            </div>
+            
+            <div style='text-align: center;'>
+                <a href='#' class='button'>View Tenant Dashboard</a>
+            </div>
+        </div>
+        <div class='footer'>
+            <p>RentConnect - Property Management System</p>
+            <p>This is an automated notification.</p>
+        </div>
+    </div>
+</body>
+</html>";
+        }
+
+        #endregion
+
         #region Private Helper Methods
 
         private async Task<TenantDto> MapToDto(Tenant tenant)
@@ -802,6 +1089,11 @@ namespace RentConnect.Services.Implementations
                 AgreementSigned = tenant.AgreementSigned,
                 AgreementDate = tenant.AgreementDate,
                 AgreementUrl = tenant.AgreementUrl,
+                AgreementEmailSent = tenant.AgreementEmailSent,
+                AgreementEmailDate = tenant.AgreementEmailDate,
+                AgreementAccepted = tenant.AgreementAccepted,
+                AgreementAcceptedDate = tenant.AgreementAcceptedDate,
+                AgreementAcceptedBy = tenant.AgreementAcceptedBy,
                 OnboardingEmailSent = tenant.OnboardingEmailSent,
                 OnboardingEmailDate = tenant.OnboardingEmailDate,
                 OnboardingCompleted = tenant.OnboardingCompleted,

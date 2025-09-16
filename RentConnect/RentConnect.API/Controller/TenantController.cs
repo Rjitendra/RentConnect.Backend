@@ -108,7 +108,7 @@ namespace RentConnect.API.Controller
             if (tenantDto.Tenants.Any() == false)
                 return BadRequest("Invalid tenant");
 
-           var result = await _tenantService.UpdateTenant(tenantDto);
+            var result = await _tenantService.UpdateTenant(tenantDto);
             return ProcessResult(result);
         }
 
@@ -177,6 +177,36 @@ namespace RentConnect.API.Controller
                 return BadRequest("Invalid tenant ID");
 
             var result = await _tenantService.CreateAgreement(request);
+            return ProcessResult(result);
+        }
+
+        /// <summary>
+        /// Accept rental agreement by primary tenant
+        /// </summary>
+        /// <param name="tenantId">Tenant ID</param>
+        /// <returns>Success status</returns>
+        [HttpPost("agreement/accept/{tenantId}")]
+        public async Task<IActionResult> AcceptAgreement(long tenantId)
+        {
+            if (tenantId <= 0)
+                return BadRequest("Invalid tenant ID");
+
+            var result = await _tenantService.AcceptAgreement(tenantId);
+            return ProcessResult(result);
+        }
+
+        /// <summary>
+        /// Get agreement acceptance status for tenant group
+        /// </summary>
+        /// <param name="tenantId">Tenant ID</param>
+        /// <returns>Agreement acceptance status</returns>
+        [HttpGet("agreement/status/{tenantId}")]
+        public async Task<IActionResult> GetAgreementStatus(long tenantId)
+        {
+            if (tenantId <= 0)
+                return BadRequest("Invalid tenant ID");
+
+            var result = await _tenantService.GetAgreementStatus(tenantId);
             return ProcessResult(result);
         }
 
