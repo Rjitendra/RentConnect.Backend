@@ -16,5 +16,7 @@
 
         // Tenant Data
         public List<TenantDto> Tenants { get; set; } = new();
+
+        public bool? IsSingleTenant { get; set; }
     }
 }

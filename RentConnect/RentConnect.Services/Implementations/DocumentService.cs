@@ -153,13 +153,20 @@
 
                 var documentDtos = documents.Select(d => new DocumentDto
                 {
+                    Id = d.Id,
                     OwnerId = d.OwnerId,
                     OwnerType = d.OwnerType,
+                    LandlordId = d.LandlordId,
+                    PropertyId = d.PropertyId,
                     Category = d.Category,
                     Url = d.Url,
                     Name = d.Name,
+                    Size = d.Size,
+                    Type = d.Type,
                     Description = d.Description,
-                    DocumentIdentifier = d.Id.ToString()
+                    DocumentIdentifier = d.Id.ToString(),
+                    UploadedOn = d.UploadedOn,
+                    IsVerified = d.IsVerified
                 }).ToList();
 
                 return Result<IEnumerable<DocumentDto>>.Success(documentDtos);

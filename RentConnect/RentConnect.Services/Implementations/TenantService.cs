@@ -106,7 +106,7 @@ namespace RentConnect.Services.Implementations
             try
             {
                 var tenants = await _context.Tenant
-                    .Where(t => t.LandlordId == landlordId)
+                    .Where(t => t.LandlordId == landlordId && t.IsActive == true && t.IsDeleted == false)
                     .Include(t => t.Property)
                     .Include(t => t.Landlord)
                     .ToListAsync();
@@ -131,21 +131,18 @@ namespace RentConnect.Services.Implementations
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-
-
-
                 foreach (var tenant in request.Tenants)
                 {
-                    tenant.PropertyId = request.PropertyId.Value;
-                    tenant.RentAmount = request.RentAmount.Value;
-                    tenant.SecurityDeposit = request.SecurityDeposit.Value;
+                    tenant.PropertyId = request.PropertyId;
+                    tenant.RentAmount = request.RentAmount;
+                    tenant.SecurityDeposit = request.SecurityDeposit;
                     tenant.MaintenanceCharges = request.MaintenanceCharges;
-                    tenant.TenancyStartDate = request.TenancyStartDate.Value;
+                    tenant.TenancyStartDate = request.TenancyStartDate;
                     tenant.TenancyEndDate = request.TenancyEndDate; // optional if provided
-                    tenant.RentDueDate = request.RentDueDate.Value;
+                    tenant.RentDueDate = request.RentDueDate;
                     tenant.LeaseDuration = request.LeaseDuration > 0 ? request.LeaseDuration : 12;
                     tenant.NoticePeriod = request.NoticePeriod > 0 ? request.NoticePeriod : 30;
-                    tenant.LandlordId = request.LandlordId.Value;
+                    tenant.LandlordId = request.LandlordId;
                 }
 
                 // Validate the request
@@ -161,7 +158,7 @@ namespace RentConnect.Services.Implementations
                 }
 
                 // Ensure at least one tenant is marked as primary
-                if (!request.Tenants.Any(t => t.IsPrimary))
+                if (!request.Tenants.Any(t => t.IsPrimary == true))
                 {
                     request.Tenants.First().IsPrimary = true;
                 }
@@ -175,11 +172,11 @@ namespace RentConnect.Services.Implementations
                 {
                     // Map to entity
                     var tenant = MapToEntity(tenantDto, request);
-                    tenant.TenantGroup = tenantGroupId; // reduce to int range
+                    tenant.TenantGroup = tenantGroupId;
                     tenant.DateCreated = DateTime.UtcNow;
                     tenant.DateModified = DateTime.UtcNow;
 
-                    // Age is calculated automatically in the DTO
+
 
                     // Add tenant to context
                     _context.Tenant.Add(tenant);
@@ -230,20 +227,20 @@ namespace RentConnect.Services.Implementations
                 // Apply common request-level values to all tenants
                 foreach (var tenant in request.Tenants)
                 {
-                    tenant.PropertyId = request.PropertyId.Value;
-                    tenant.RentAmount = request.RentAmount.Value;
-                    tenant.SecurityDeposit = request.SecurityDeposit.Value;
+                    tenant.PropertyId = request.PropertyId;
+                    tenant.RentAmount = request.RentAmount;
+                    tenant.SecurityDeposit = request.SecurityDeposit;
                     tenant.MaintenanceCharges = request.MaintenanceCharges;
-                    tenant.TenancyStartDate = request.TenancyStartDate.Value;
+                    tenant.TenancyStartDate = request.TenancyStartDate;
                     tenant.TenancyEndDate = request.TenancyEndDate; // optional
-                    tenant.RentDueDate = request.RentDueDate.Value;
+                    tenant.RentDueDate = request.RentDueDate;
                     tenant.LeaseDuration = request.LeaseDuration > 0 ? request.LeaseDuration : 12;
                     tenant.NoticePeriod = request.NoticePeriod > 0 ? request.NoticePeriod : 30;
-                    tenant.LandlordId = request.LandlordId.Value;
+                    tenant.LandlordId = request.LandlordId;
                 }
 
                 // Validate the whole tenant group
-                var groupValidationErrors = ValidateTenantGroup(request.Tenants);
+                var groupValidationErrors = ValidateTenantGroup(request.Tenants, request.IsSingleTenant.Value);
                 if (groupValidationErrors.Any())
                 {
                     return Result<TenantSaveResponseDto>.Failure(new TenantSaveResponseDto
@@ -334,6 +331,7 @@ namespace RentConnect.Services.Implementations
 
                 // Soft delete - mark as inactive instead of removing
                 tenant.IsActive = false;
+                tenant.IsDeleted = true;
                 tenant.DateModified = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
@@ -362,15 +360,14 @@ namespace RentConnect.Services.Implementations
                 var cutoffDate = today.AddYears(-18); // Date 18 years ago
 
                 var eligibleTenants = await _context.Tenant
-     .Include(t => t.Property)
-     .Include(t => t.Landlord)
-     .Where(t => t.LandlordId == landlordId
-                 && t.PropertyId == propertyId // Specific property
-                 && t.DOB.HasValue && t.DOB.Value <= cutoffDate // Age >= 18
-                 && !string.IsNullOrEmpty(t.Email) // Has email
-                 && t.NeedsOnboarding.HasValue && t.NeedsOnboarding.Value // Needs onboarding = true
-                 && t.IsActive.HasValue && t.IsActive.Value) // Is active = true
-     .ToListAsync();
+                     .Include(t => t.Property)
+                     .Include(t => t.Landlord)
+                     .Where(t => t.LandlordId == landlordId
+                                 && t.PropertyId == propertyId // Specific property
+                                 && t.DOB.HasValue && t.DOB.Value <= cutoffDate // Age >= 18
+                                 && !string.IsNullOrEmpty(t.Email) // Has email
+                                && t.IsActive.HasValue && t.IsActive.Value) // Is active = true
+                     .ToListAsync();
 
 
                 var tenantDtos = new List<TenantDto>();
@@ -407,7 +404,6 @@ namespace RentConnect.Services.Implementations
                   && t.PropertyId == propertyId // Specific property
                   && t.DOB.HasValue && t.DOB.Value <= cutoffDate // Age >= 18
                   && !string.IsNullOrEmpty(t.Email) // Has email
-                  && t.NeedsOnboarding.HasValue && t.NeedsOnboarding.Value // Must be true
                   && t.IsActive.HasValue && t.IsActive.Value) // Must be true
       .ToListAsync();
 
@@ -427,7 +423,6 @@ namespace RentConnect.Services.Implementations
                         // Update tenant onboarding status
                         tenant.OnboardingEmailSent = true;
                         tenant.OnboardingEmailDate = DateTime.UtcNow;
-                        tenant.NeedsOnboarding = false;
                         tenant.DateModified = DateTime.UtcNow;
 
                         emailsSent++;
@@ -633,7 +628,7 @@ namespace RentConnect.Services.Implementations
                 var active = tenants.Where(t => t.IsActive == true).ToList();
                 var inactive = tenants.Where(t => t.IsActive == false).ToList();
 
-                var pendingOnboarding = tenants.Where(t => t.NeedsOnboarding.HasValue).ToList();
+                var pendingOnboarding = tenants.Where(t => t.OnboardingEmailDate.HasValue).ToList();
                 var totalMonthlyRent = active.Sum(t => t.RentAmount);
 
                 var statistics = new TenantStatisticsDto
@@ -698,7 +693,7 @@ namespace RentConnect.Services.Implementations
             return errors;
         }
 
-        public List<TenantValidationErrorDto> ValidateTenantGroup(List<TenantDto> tenants)
+        public List<TenantValidationErrorDto> ValidateTenantGroup(List<TenantDto> tenants, bool isSingleTenant = false)
         {
             var errors = new List<TenantValidationErrorDto>();
 
@@ -709,12 +704,14 @@ namespace RentConnect.Services.Implementations
             }
 
             // Check that exactly one tenant is marked as primary
-            var primaryCount = tenants.Count(t => t.IsPrimary);
-            if (primaryCount == 0)
-                errors.Add(new TenantValidationErrorDto { Field = "tenants", Message = "One tenant must be marked as primary" });
-            else if (primaryCount > 1)
-                errors.Add(new TenantValidationErrorDto { Field = "tenants", Message = "Only one tenant can be marked as primary" });
-
+            if (!isSingleTenant)
+            {
+                var primaryCount = tenants.Count(t => t.IsPrimary == true);
+                if (primaryCount == 0)
+                    errors.Add(new TenantValidationErrorDto { Field = "tenants", Message = "One tenant must be marked as primary" });
+                else if (primaryCount > 1)
+                    errors.Add(new TenantValidationErrorDto { Field = "tenants", Message = "Only one tenant can be marked as primary" });
+            }
             // Validate each tenant
             for (int i = 0; i < tenants.Count; i++)
             {
@@ -765,41 +762,84 @@ namespace RentConnect.Services.Implementations
                 Id = tenant.Id,
                 LandlordId = tenant.LandlordId,
                 PropertyId = tenant.PropertyId,
+
                 Name = tenant.Name,
                 Email = tenant.Email,
                 PhoneNumber = tenant.PhoneNumber,
-                DOB = tenant.DOB.Value,
+                AlternatePhoneNumber = tenant.AlternatePhoneNumber,
+                DOB = tenant.DOB,
                 Occupation = tenant.Occupation,
+                Gender = tenant.Gender,
+                MaritalStatus = tenant.MaritalStatus,
+
+                CurrentAddress = tenant.CurrentAddress,
+                PermanentAddress = tenant.PermanentAddress,
+
+                EmergencyContactName = tenant.EmergencyContactName,
+                EmergencyContactPhone = tenant.EmergencyContactPhone,
+                EmergencyContactRelation = tenant.EmergencyContactRelation,
+
                 AadhaarNumber = tenant.AadhaarNumber,
                 PanNumber = tenant.PanNumber,
-                TenancyStartDate = tenant.TenancyStartDate.Value,
+                DrivingLicenseNumber = tenant.DrivingLicenseNumber,
+                VoterIdNumber = tenant.VoterIdNumber,
+
+                EmployerName = tenant.EmployerName,
+                EmployerAddress = tenant.EmployerAddress,
+                EmployerPhone = tenant.EmployerPhone,
+                MonthlyIncome = tenant.MonthlyIncome,
+                WorkExperience = tenant.WorkExperience,
+
+                TenancyStartDate = tenant.TenancyStartDate,
                 TenancyEndDate = tenant.TenancyEndDate,
-                RentDueDate = tenant.RentDueDate.Value,
-                RentAmount = tenant.RentAmount.Value,
-                SecurityDeposit = tenant.SecurityDeposit.Value,
-                BackgroundCheckFileUrl = tenant.BackgroundCheckFileUrl,
-                RentGuideFileUrl = tenant.RentGuideFileUrl,
-                DepositReceiptUrl = tenant.DepositReceiptUrl,
-                IsAcknowledge = tenant.IsAcknowledge.Value,
+                RentDueDate = tenant.RentDueDate,
+                RentAmount = tenant.RentAmount,
+                SecurityDeposit = tenant.SecurityDeposit,
+                MaintenanceCharges = tenant.MaintenanceCharges,
+                LeaseDuration = tenant.LeaseDuration,
+                NoticePeriod = tenant.NoticePeriod,
+
+                AgreementSigned = tenant.AgreementSigned,
+                AgreementDate = tenant.AgreementDate,
+                AgreementUrl = tenant.AgreementUrl,
+                OnboardingEmailSent = tenant.OnboardingEmailSent,
+                OnboardingEmailDate = tenant.OnboardingEmailDate,
+                OnboardingCompleted = tenant.OnboardingCompleted,
+
+                IsAcknowledge = tenant.IsAcknowledge,
                 AcknowledgeDate = tenant.AcknowledgeDate,
-                IsVerified = tenant.IsVerified.Value,
-                IsNewTenant = tenant.IsNewTenant.Value,
-                IsPrimary = tenant.IsPrimary.Value,
-                IsActive = tenant.IsActive.Value,
+                IsVerified = tenant.IsVerified,
+                VerificationNotes = tenant.VerificationNotes,
+
+                IsNewTenant = tenant.IsNewTenant,
+                IsPrimary = tenant.IsPrimary,
+                IsActive = tenant.IsActive,
+
+
                 TenantGroup = tenant.TenantGroup,
+
                 IpAddress = tenant.IpAddress,
                 DateCreated = tenant.DateCreated,
                 DateModified = tenant.DateModified,
+
+
                 PropertyName = tenant.Property != null ? $"{tenant.Property.Title} - {tenant.Property.Locality}, {tenant.Property.City}" : "",
                 Documents = documents.Select(d => new DocumentDto
                 {
+                    Id = d.Id,
                     OwnerId = d.OwnerId,
                     OwnerType = d.OwnerType,
+                    LandlordId = d.LandlordId,
+                    PropertyId = d.PropertyId,
                     Category = d.Category,
-                    Name = d.Name,
                     Url = d.Url,
+                    Name = d.Name,
+                    Size = d.Size,
+                    Type = d.Type,
                     Description = d.Description,
-                    DocumentIdentifier = d.DocumentIdentifier
+                    DocumentIdentifier = d.Id.ToString(),
+                    UploadedOn = d.UploadedOn,
+                    IsVerified = d.IsVerified
                 }).ToList(),
                 Children = children.Select(c => new TenantChildrenDto
                 {
@@ -808,7 +848,8 @@ namespace RentConnect.Services.Implementations
                     Name = c.Name,
                     Email = c.Email,
                     DOB = c.DOB,
-                    Occupation = c.Occupation
+                    Occupation = c.Occupation,
+                    TenantId = c.TenantId
                 }).ToList()
             };
         }
@@ -826,17 +867,23 @@ namespace RentConnect.Services.Implementations
                 Occupation = dto.Occupation,
                 AadhaarNumber = dto.AadhaarNumber,
                 PanNumber = dto.PanNumber,
+                EmergencyContactName = dto.EmergencyContactName,
+                EmergencyContactPhone = dto.EmergencyContactPhone,
+                EmergencyContactRelation = dto.EmergencyContactRelation,
                 TenancyStartDate = request.TenancyStartDate,
                 TenancyEndDate = request.TenancyEndDate,
                 RentDueDate = request.RentDueDate,
                 RentAmount = request.RentAmount,
+                LeaseDuration = request.LeaseDuration,
+                MaintenanceCharges = request.MaintenanceCharges,
                 SecurityDeposit = request.SecurityDeposit,
+                // below properties need to implement in ui
                 IsAcknowledge = false,
                 IsVerified = false,
                 IsNewTenant = true,
                 IsPrimary = dto.IsPrimary,
                 IsActive = true,
-                NeedsOnboarding = true,
+                IsDeleted = false,
                 OnboardingEmailSent = false,
                 OnboardingCompleted = false,
                 AgreementSigned = false
@@ -852,16 +899,21 @@ namespace RentConnect.Services.Implementations
             entity.Occupation = dto.Occupation;
             entity.AadhaarNumber = dto.AadhaarNumber;
             entity.PanNumber = dto.PanNumber;
+            entity.EmergencyContactName = dto.EmergencyContactName;
+            entity.EmergencyContactPhone = dto.EmergencyContactPhone;
+            entity.EmergencyContactRelation = dto.EmergencyContactRelation;
             entity.TenancyStartDate = dto.TenancyStartDate;
             entity.TenancyEndDate = dto.TenancyEndDate;
             entity.RentDueDate = dto.RentDueDate;
             entity.RentAmount = dto.RentAmount;
+            entity.LeaseDuration = dto.LeaseDuration;
+            entity.MaintenanceCharges = dto.MaintenanceCharges;
             entity.SecurityDeposit = dto.SecurityDeposit;
-            entity.IsAcknowledge = dto.IsAcknowledge;
-            entity.IsVerified = dto.IsVerified;
-            entity.IsNewTenant = dto.IsNewTenant;
-            entity.IsPrimary = dto.IsPrimary;
-            entity.IsActive = dto.IsActive;
+            //entity.IsAcknowledge = dto.IsAcknowledge;
+            //entity.IsVerified = dto.IsVerified;
+            //entity.IsNewTenant = dto.IsNewTenant;
+            //entity.IsPrimary = dto.IsPrimary;
+            //entity.IsActive = dto.IsActive;
         }
 
         private List<TenantDto> MapRequestToDto(TenantCreateRequestDto request)
@@ -887,7 +939,6 @@ namespace RentConnect.Services.Implementations
                 IsNewTenant = true,
                 IsPrimary = dto.IsPrimary,
                 IsActive = true,
-                NeedsOnboarding = true,
                 OnboardingEmailSent = false,
                 OnboardingCompleted = false,
                 AgreementSigned = false

@@ -332,8 +332,8 @@ namespace RentConnect.API.Controller
                 if (isActive.HasValue)
                     tenants = tenants.Where(t => t.IsActive == isActive.Value);
 
-                if (needsOnboarding.HasValue)
-                    tenants = tenants.Where(t => t.NeedsOnboarding == needsOnboarding.Value);
+                //if (needsOnboarding.HasValue)
+                //    tenants = tenants.Where(t => t.NeedsOnboarding == needsOnboarding.Value);
 
                 return Ok(tenants.ToList());
             }

@@ -33,7 +33,7 @@ namespace RentConnect.Services.Implementations
 
                 foreach (var property in properties)
                 {
-                    property.Documents = documents.Where(d => d.PropertyId == property.Id && d.LandlordId == property.LandlordId).ToList(); ;
+                    property.Documents = documents.Where(d => d.PropertyId == property.Id && d.LandlordId == property.LandlordId).ToList(); 
                 }
 
                 var propertyDtos = properties.Select(MapToDto).ToList();
@@ -407,9 +407,9 @@ namespace RentConnect.Services.Implementations
                 OnboardingCompleted = tenant.OnboardingCompleted,
 
                 // Files
-                BackgroundCheckFileUrl = tenant.BackgroundCheckFileUrl,
-                RentGuideFileUrl = tenant.RentGuideFileUrl,
-                DepositReceiptUrl = tenant.DepositReceiptUrl,
+                //BackgroundCheckFileUrl = tenant.BackgroundCheckFileUrl,
+                //RentGuideFileUrl = tenant.RentGuideFileUrl,
+                //DepositReceiptUrl = tenant.DepositReceiptUrl,
 
                 // Acknowledgement / Verification
                 IsAcknowledge = tenant.IsAcknowledge ?? false,
@@ -421,7 +421,7 @@ namespace RentConnect.Services.Implementations
                 IsNewTenant = tenant.IsNewTenant ?? true,
                 IsPrimary = tenant.IsPrimary ?? false,
                 IsActive = tenant.IsActive ?? true,
-                NeedsOnboarding = tenant.NeedsOnboarding ?? true,
+               // NeedsOnboarding = tenant.NeedsOnboarding ?? true,
 
                 // Grouping
                 TenantGroup = tenant.TenantGroup,
@@ -448,10 +448,10 @@ namespace RentConnect.Services.Implementations
 
                 // Extra UI props
                 PropertyName = tenant.Property.Title,  // assuming `Property.Name` exists
-                TenantCount = tenant.Property?.Tenants?.Count ?? 0,
-                StatusDisplay = tenant.IsActive == true ? "Active" : "Inactive",
-                StatusClass = tenant.IsActive == true ? "status-active" : "status-inactive",
-                StatusIcon = tenant.IsActive == true ? "check_circle" : "cancel"
+                //TenantCount = tenant.Property?.Tenants?.Count ?? 0,
+                //StatusDisplay = tenant.IsActive == true ? "Active" : "Inactive",
+                //StatusClass = tenant.IsActive == true ? "status-active" : "status-inactive",
+                //StatusIcon = tenant.IsActive == true ? "check_circle" : "cancel"
             };
         }
 

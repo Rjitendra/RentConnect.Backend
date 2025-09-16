@@ -34,6 +34,6 @@
 
         // Validation
         List<TenantValidationErrorDto> ValidateTenant(TenantDto tenant);
-        List<TenantValidationErrorDto> ValidateTenantGroup(List<TenantDto> tenants);
+        List<TenantValidationErrorDto> ValidateTenantGroup(List<TenantDto> tenants, bool isSingleTenant);
     }
 }

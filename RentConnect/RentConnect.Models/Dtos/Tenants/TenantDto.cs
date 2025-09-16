@@ -5,20 +5,20 @@
 
     public class TenantDto
     {
-        public long Id { get; set; }
-        public long LandlordId { get; set; }
-        public long PropertyId { get; set; }
+        public long? Id { get; set; }
+        public long? LandlordId { get; set; }
+        public long? PropertyId { get; set; }
 
         // Personal Information
-        public string Name { get; set; } = string.Empty;
+        public string? Name { get; set; } = string.Empty;
         public string? Email { get; set; }
-        public string PhoneNumber { get; set; } = string.Empty;
+        public string? PhoneNumber { get; set; } = string.Empty;
         public string? AlternatePhoneNumber { get; set; }
-        public DateTime DOB { get; set; }
-        public string Occupation { get; set; } = string.Empty;
+        public DateTime? DOB { get; set; }
+        public string? Occupation { get; set; } = string.Empty;
 
         // Calculated property - Age is computed from DOB
-        public int Age => CalculateAge(DOB);
+        public int Age => CalculateAge(DOB) ?? 0;
         public string? Gender { get; set; }
         public string? MaritalStatus { get; set; }
 
@@ -45,11 +45,11 @@
         public int? WorkExperience { get; set; }
 
         // Tenancy Details
-        public DateTime TenancyStartDate { get; set; }
+        public DateTime? TenancyStartDate { get; set; }
         public DateTime? TenancyEndDate { get; set; }
-        public DateTime RentDueDate { get; set; }
-        public decimal RentAmount { get; set; }
-        public decimal SecurityDeposit { get; set; }
+        public DateTime? RentDueDate { get; set; }
+        public decimal? RentAmount { get; set; }
+        public decimal? SecurityDeposit { get; set; }
         public decimal? MaintenanceCharges { get; set; }
         public int? LeaseDuration { get; set; } = 12; // in months
         public int? NoticePeriod { get; set; } = 30; // in days
@@ -63,21 +63,21 @@
         public bool? OnboardingCompleted { get; set; }
 
         // File References
-        public string? BackgroundCheckFileUrl { get; set; }
-        public string? RentGuideFileUrl { get; set; }
-        public string? DepositReceiptUrl { get; set; }
+        //public string? BackgroundCheckFileUrl { get; set; }
+        //public string? RentGuideFileUrl { get; set; }
+        //public string? DepositReceiptUrl { get; set; }
 
         // Acknowledgement & Verification
-        public bool IsAcknowledge { get; set; }
+        public bool? IsAcknowledge { get; set; }
         public DateTime? AcknowledgeDate { get; set; }
-        public bool IsVerified { get; set; }
+        public bool? IsVerified { get; set; }
         public string? VerificationNotes { get; set; }
 
         // Status Flags
-        public bool IsNewTenant { get; set; } = true;
-        public bool IsPrimary { get; set; }
-        public bool IsActive { get; set; } = true;
-        public bool? NeedsOnboarding { get; set; } = true;
+        public bool? IsNewTenant { get; set; } = true;
+        public bool? IsPrimary { get; set; }
+        public bool? IsActive { get; set; } = true;
+        //public bool? NeedsOnboarding { get; set; } = true;
 
         // Grouping
         public string? TenantGroup { get; set; }
@@ -88,23 +88,35 @@
         public DateTime? DateModified { get; set; }
 
         // Navigation Properties
-        public List<DocumentDto> Documents { get; set; } = new();
-        public List<TenantChildrenDto> Children { get; set; } = new();
+        public List<DocumentDto>? Documents { get; set; } = new();
+        public List<TenantChildrenDto>? Children { get; set; } = new();
 
         // Additional Properties for UI
         public string? PropertyName { get; set; }
-        public int TenantCount { get; set; }
-        public string? StatusDisplay { get; set; }
-        public string? StatusClass { get; set; }
-        public string? StatusIcon { get; set; }
+        //public int TenantCount { get; set; }
+        //public string? StatusDisplay { get; set; }
+        //public string? StatusClass { get; set; }
+        //public string? StatusIcon { get; set; }
 
         // Helper method for age calculation
-        private static int CalculateAge(DateTime dob)
+        private static int? CalculateAge(DateTime? dob)
         {
+            if (!dob.HasValue)
+            {
+                return null; // No DOB provided
+            }
+
             var today = DateTime.Today;
-            var age = today.Year - dob.Year;
-            if (dob.Date > today.AddYears(-age)) age--;
+            var age = today.Year - dob.Value.Year;
+
+            // Adjust if birthday hasn’t occurred yet this year
+            if (dob.Value.Date > today.AddYears(-age))
+            {
+                age--;
+            }
+
             return age;
         }
+
     }
 }

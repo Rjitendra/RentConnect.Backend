@@ -9,8 +9,7 @@
     {
         // ✅ Relationship to Landlord
         public long LandlordId { get; set; }
-        public virtual Landlord Landlord { get; set; } // Navigation
-                                                       // Navigation property
+        public virtual Landlord Landlord { get; set; }  // Navigation property
 
         // ✅ Relationship to Property
         public long PropertyId { get; set; }
@@ -59,9 +58,9 @@
         public int? NoticePeriod { get; set; } // in days
 
         // File references
-        public string? BackgroundCheckFileUrl { get; set; }
-        public string? RentGuideFileUrl { get; set; }
-        public string? DepositReceiptUrl { get; set; }
+        //public string? BackgroundCheckFileUrl { get; set; }
+        //public string? RentGuideFileUrl { get; set; }
+        //public string? DepositReceiptUrl { get; set; }
 
         // Acknowledgement & verification
         public bool? IsAcknowledge { get; set; }
@@ -90,7 +89,6 @@
         public bool? OnboardingEmailSent { get; set; }
         public DateTime? OnboardingEmailDate { get; set; }
         public bool? OnboardingCompleted { get; set; }
-        public bool? NeedsOnboarding { get; set; }
         public bool? AgreementSigned { get; set; }
         public DateTime? AgreementDate { get; set; }
         public string? AgreementUrl { get; set; }
