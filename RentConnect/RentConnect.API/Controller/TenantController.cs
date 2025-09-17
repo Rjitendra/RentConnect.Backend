@@ -166,6 +166,21 @@ namespace RentConnect.API.Controller
         }
 
         /// <summary>
+        /// Send onboarding emails to specific tenants by their IDs
+        /// </summary>
+        /// <param name="tenantIds">List of tenant IDs</param>
+        /// <returns>Number of emails sent</returns>
+        [HttpPost("onboarding/email/by-ids")]
+        public async Task<IActionResult> SendOnboardingEmailsByTenantIds([FromBody] List<long> tenantIds)
+        {
+            if (tenantIds == null || !tenantIds.Any())
+                return BadRequest("Tenant IDs are required");
+
+            var result = await _tenantService.SendOnboardingEmailsByTenantIds(tenantIds);
+            return ProcessResult(result);
+        }
+
+        /// <summary>
         /// Create rental agreement for tenant
         /// </summary>
         /// <param name="request">Agreement creation request</param>

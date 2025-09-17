@@ -8,23 +8,28 @@
     using RentConnect.Models.Dtos.Tenants;
     using RentConnect.Models.Entities.Tenants;
     using RentConnect.Models.Enums;
+    using RentConnect.Models.Configs;
     using RentConnect.Services.Interfaces;
     using RentConnect.Services.Utility;
     using System.Text.RegularExpressions;
+    using System.Web;
     public class TenantService : ITenantService
     {
         private readonly ApiContext _context;
         private readonly IDocumentService _documentService;
         private readonly IMailService _mailService;
+        private readonly ServerSettings _serverSettings;
 
         public TenantService(
             ApiContext context,
             IDocumentService documentService,
-            IMailService mailService)
+            IMailService mailService,
+            ServerSettings serverSettings)
         {
             _context = context;
             _documentService = documentService;
             _mailService = mailService;
+            _serverSettings = serverSettings;
         }
 
         #region Core CRUD Operations
@@ -396,15 +401,15 @@
                 var cutoffDate = today.AddYears(-18); // Date 18 years ago
 
                 var eligibleTenants = await _context.Tenant
-      .Include(t => t.Property)
-      .Include(t => t.Landlord)
-      .Where(t => t.LandlordId == landlordId
-                  && t.PropertyId == propertyId // Specific property
-                  && t.DOB.HasValue && t.DOB.Value <= cutoffDate // Age >= 18
-                  && !string.IsNullOrEmpty(t.Email) // Has email
-                  && t.IsActive.HasValue && t.IsActive.Value) // Must be true
-      .ToListAsync();
-
+                    .Include(t => t.Property)
+                    .Include(t => t.Landlord)
+                    .Where(t => t.LandlordId == landlordId
+                                && t.PropertyId == propertyId // Specific property
+                                && t.DOB.HasValue && t.DOB.Value <= cutoffDate // Age >= 18
+                                && !string.IsNullOrEmpty(t.Email) // Has email
+                                && t.IsActive.HasValue && t.IsActive.Value // Must be true
+                                && (!t.OnboardingEmailSent.HasValue || !t.OnboardingEmailSent.Value)) // Not sent yet
+                    .ToListAsync();
 
                 if (!eligibleTenants.Any())
                     return Result<int>.Success(0);
@@ -415,20 +420,36 @@
                 {
                     try
                     {
-                        // TODO: Implement actual email sending logic using IMailService
-                        // For now, we'll just mark them as sent
+                        // Create password reset URL for tenant
+                        var confirmationUrl = $"{_serverSettings.BaseUrl}/Account/ResetPasswordTenant?email={HttpUtility.UrlEncode(tenant.Email)}";
 
-                        // Update tenant onboarding status
-                        tenant.OnboardingEmailSent = true;
-                        tenant.OnboardingEmailDate = DateTime.UtcNow;
-                        tenant.DateModified = DateTime.UtcNow;
+                        // Create attachments list (property documents)
+                        var attachmentsList = CreateAttachmentsList(tenant);
 
-                        emailsSent++;
+                        // Create email request
+                        var mailObj = new MailRequestDto()
+                        {
+                            ToEmail = tenant.Email,
+                            Subject = "Welcome to RentConnect - Complete Your Onboarding",
+                            Body = await CreateOnboardingEmailBodyAsync(tenant.Name, confirmationUrl, tenant),
+                            Attachments = attachmentsList
+                        };
+
+                        // Send email
+                        var emailResult = await _mailService.SendEmailAsync(mailObj);
+
+                        if (emailResult.Status == ResultStatusType.Success)
+                        {
+                            // Update tenant onboarding status
+                            tenant.OnboardingEmailSent = true;
+                            tenant.OnboardingEmailDate = DateTime.UtcNow;
+                            tenant.DateModified = DateTime.UtcNow;
+                            emailsSent++;
+                        }
                     }
                     catch (Exception emailEx)
                     {
                         // Log individual email failures but continue with others
-                        // TODO: Add proper logging
                         Console.WriteLine($"Failed to send email to tenant {tenant.Id}: {emailEx.Message}");
                     }
                 }
@@ -441,6 +462,76 @@
             catch (Exception ex)
             {
                 return Result<int>.Failure($"Failed to send onboarding emails: {ex.Message}");
+            }
+        }
+
+        public async Task<Result<int>> SendOnboardingEmailsByTenantIds(List<long> tenantIds)
+        {
+            try
+            {
+                if (tenantIds == null || !tenantIds.Any())
+                    return Result<int>.Success(0);
+
+                // Get tenants by IDs where they have email and are active
+                var tenants = await _context.Tenant
+                    .Include(t => t.Property)
+                    .Include(t => t.Landlord)
+                    .Where(t => tenantIds.Contains(t.Id)
+                                && !string.IsNullOrEmpty(t.Email) // Has email
+                                && t.IsActive.HasValue && t.IsActive.Value) // Must be active
+                    .ToListAsync();
+
+                if (!tenants.Any())
+                    return Result<int>.Success(0);
+
+                int emailsSent = 0;
+
+                foreach (var tenant in tenants)
+                {
+                    try
+                    {
+                        // Create password reset URL for tenant
+                        var confirmationUrl = $"{_serverSettings.BaseUrl}/Account/ResetPasswordTenant?email={HttpUtility.UrlEncode(tenant.Email)}";
+
+                        // Create attachments list (property documents)
+                        var attachmentsList = CreateAttachmentsList(tenant);
+
+                        // Create email request
+                        var mailObj = new MailRequestDto()
+                        {
+                            ToEmail = tenant.Email,
+                            Subject = "Welcome to RentConnect - Complete Your Onboarding",
+                            Body = await CreateOnboardingEmailBodyAsync(tenant.Name, confirmationUrl, tenant),
+                            Attachments = attachmentsList
+                        };
+
+                        // Send email
+                        var emailResult = await _mailService.SendEmailAsync(mailObj);
+
+                        if (emailResult.Status == ResultStatusType.Success)
+                        {
+                            // Update tenant onboarding status
+                            tenant.OnboardingEmailSent = true;
+                            tenant.OnboardingEmailDate = DateTime.UtcNow;
+                            tenant.DateModified = DateTime.UtcNow;
+                            emailsSent++;
+                        }
+                    }
+                    catch (Exception emailEx)
+                    {
+                        // Log individual email failures but continue with others
+                        Console.WriteLine($"Failed to send email to tenant {tenant.Id}: {emailEx.Message}");
+                    }
+                }
+
+                // Save all changes
+                await _context.SaveChangesAsync();
+
+                return Result<int>.Success(emailsSent);
+            }
+            catch (Exception ex)
+            {
+                return Result<int>.Failure($"Failed to send onboarding emails by tenant IDs: {ex.Message}");
             }
         }
 
@@ -615,7 +706,6 @@
                 return Result<TenantChildren>.Failure($"Failed to add tenant child: {ex.Message}");
             }
         }
-
         public async Task<Result<bool>> UpdateTenantChild(long tenantId, long childId, TenantChildren childData)
         {
             try
@@ -1303,6 +1393,115 @@
             var panRegex = new Regex(@"^[A-Z]{5}[0-9]{4}[A-Z]{1}$");
             return panRegex.IsMatch(pan.ToUpper());
         }
+
+        #region Onboarding Email Helper Methods
+
+        private List<AttachmentsDto> CreateAttachmentsList(Tenant tenant)
+        {
+            var attachments = new List<AttachmentsDto>();
+
+            try
+            {
+                // Add property documents as attachments if available
+                // Note: In a real implementation, you would add relevant property documents
+                // For now, returning empty list - can be extended later as needed
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error creating attachments for tenant {tenant.Id}: {ex.Message}");
+            }
+
+            return attachments;
+        }
+
+        private async Task<string> CreateOnboardingEmailBodyAsync(string tenantName, string confirmationUrl, Tenant tenant)
+        {
+            return await Task.FromResult($@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background-color: #4CAF50; color: white; padding: 20px; text-align: center; }}
+        .content {{ padding: 20px; background-color: #f9f9f9; }}
+        .details {{ background-color: white; padding: 15px; margin: 10px 0; border-radius: 5px; }}
+        .footer {{ text-align: center; padding: 20px; color: #666; }}
+        .button {{ display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px; margin: 10px 0; }}
+        .welcome {{ background-color: #e8f5e8; border: 1px solid #4CAF50; padding: 15px; border-radius: 5px; margin: 15px 0; }}
+        .important {{ background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 15px 0; }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <h1>🏠 Welcome to RentConnect!</h1>
+            <p>Your Digital Tenant Portal</p>
+        </div>
+        <div class='content'>
+            <div class='welcome'>
+                <h2>Hello {tenantName}! 👋</h2>
+                <p>Welcome to your new home and to the RentConnect platform. We're excited to have you as part of our community!</p>
+            </div>
+            
+            <div class='details'>
+                <h3>🔐 Complete Your Account Setup</h3>
+                <p>To get started with your tenant portal, please complete your account setup by clicking the button below:</p>
+                
+                <div style='text-align: center; margin: 20px 0;'>
+                    <a href='{confirmationUrl}' class='button'>Complete Account Setup</a>
+                </div>
+                
+                <p><strong>What you can do in your tenant portal:</strong></p>
+                <ul>
+                    <li>📄 View and sign your rental agreement</li>
+                    <li>💳 Make rent payments online</li>
+                    <li>🔧 Submit maintenance requests</li>
+                    <li>📋 Access important property documents</li>
+                    <li>📞 Contact your landlord directly</li>
+                    <li>📊 Track your payment history</li>
+                </ul>
+            </div>
+            
+            <div class='details'>
+                <h3>🏡 Property Information</h3>
+                <p><strong>Property:</strong> {tenant.Property?.Title}</p>
+                <p><strong>Address:</strong> {tenant.Property?.Locality}, {tenant.Property?.City}</p>
+                <p><strong>Tenancy Start:</strong> {tenant.TenancyStartDate:dd MMM yyyy}</p>
+                <p><strong>Monthly Rent:</strong> ₹{tenant.RentAmount:N0}</p>
+            </div>
+            
+            <div class='important'>
+                <h4>⚠️ Important Next Steps:</h4>
+                <ol>
+                    <li><strong>Complete your account setup</strong> using the link above</li>
+                    <li><strong>Review and sign your rental agreement</strong> (primary tenant only)</li>
+                    <li><strong>Set up your payment method</strong> for easy rent payments</li>
+                    <li><strong>Download the RentConnect mobile app</strong> for convenient access</li>
+                </ol>
+            </div>
+            
+            <div class='details'>
+                <h3>📞 Need Help?</h3>
+                <p>If you have any questions or need assistance:</p>
+                <ul>
+                    <li>📧 Email: support@rentconnect.com</li>
+                    <li>📱 Phone: +91-XXXX-XXXXXX</li>
+                    <li>💬 Use the chat feature in your tenant portal</li>
+                </ul>
+            </div>
+        </div>
+        <div class='footer'>
+            <p><strong>Welcome to your new home! 🏠</strong></p>
+            <p>RentConnect - Making Renting Simple</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>");
+        }
+
+        #endregion
 
         #endregion
     }
