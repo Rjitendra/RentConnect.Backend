@@ -400,7 +400,8 @@
                 var today = DateTime.Today;
                 var cutoffDate = today.AddYears(-18); // Date 18 years ago
 
-                var eligibleTenants = await _context.Tenant
+                // Get all tenants for the property with basic filters
+                var allTenants = await _context.Tenant
                     .Include(t => t.Property)
                     .Include(t => t.Landlord)
                     .Where(t => t.LandlordId == landlordId
@@ -410,6 +411,22 @@
                                 && t.IsActive.HasValue && t.IsActive.Value // Must be true
                                 && (!t.OnboardingEmailSent.HasValue || !t.OnboardingEmailSent.Value)) // Not sent yet
                     .ToListAsync();
+
+                // Filter to only include tenants whose group has accepted agreement
+                var eligibleTenants = new List<Tenant>();
+                foreach (var tenant in allTenants)
+                {
+                    // Check if primary tenant in this group has accepted agreement
+                    var primaryTenantAccepted = await _context.Tenant
+                        .AnyAsync(t => t.TenantGroup == tenant.TenantGroup
+                                      && t.IsPrimary.HasValue && t.IsPrimary.Value
+                                      && t.AgreementAccepted.HasValue && t.AgreementAccepted.Value);
+
+                    if (primaryTenantAccepted)
+                    {
+                        eligibleTenants.Add(tenant);
+                    }
+                }
 
                 if (!eligibleTenants.Any())
                     return Result<int>.Success(0);
@@ -481,6 +498,24 @@
                                 && t.IsActive.HasValue && t.IsActive.Value) // Must be active
                     .ToListAsync();
 
+                // Filter tenants to only those whose group has an accepted agreement
+                var validTenants = new List<Tenant>();
+                foreach (var tenant in tenants)
+                {
+                    // Check if primary tenant in this group has accepted agreement
+                    var primaryTenantAccepted = await _context.Tenant
+                        .AnyAsync(t => t.TenantGroup == tenant.TenantGroup
+                                      && t.IsPrimary.HasValue && t.IsPrimary.Value
+                                      && t.AgreementAccepted.HasValue && t.AgreementAccepted.Value);
+
+                    if (primaryTenantAccepted)
+                    {
+                        validTenants.Add(tenant);
+                    }
+                }
+
+                tenants = validTenants;
+
                 if (!tenants.Any())
                     return Result<int>.Success(0);
 
@@ -534,7 +569,6 @@
                 return Result<int>.Failure($"Failed to send onboarding emails by tenant IDs: {ex.Message}");
             }
         }
-
         public async Task<Result<string>> CreateAgreement(AgreementCreateRequestDto request)
         {
             try
