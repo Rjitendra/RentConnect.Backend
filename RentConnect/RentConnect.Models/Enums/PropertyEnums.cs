@@ -46,6 +46,7 @@
         ProfilePhoto,
         EmploymentProof,
         PersonPhoto,
+        PropertyCondition,
         Other
     }
 

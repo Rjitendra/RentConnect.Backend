@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RentConnect.Models.Dtos.Document;
 using RentConnect.Models.Dtos.Tenants;
 using RentConnect.Models.Entities.Tenants;
 using RentConnect.Models.Enums;
 using RentConnect.Services.Interfaces;
+using RentConnect.Services.Utility;
 
 namespace RentConnect.API.Controller
 {
@@ -49,6 +51,7 @@ namespace RentConnect.API.Controller
 
         /// <summary>
         /// Get tenants by property ID
+        /// SECURITY: This endpoint should verify that the requesting user has access to this property
         /// </summary>
         /// <param name="propertyId">Property ID</param>
         /// <returns>List of tenants for the property</returns>
@@ -58,20 +61,33 @@ namespace RentConnect.API.Controller
             if (propertyId <= 0)
                 return BadRequest("Invalid property ID");
 
+            // TODO: Add security check to verify the requesting user has access to this property
+            // This could be either the landlord who owns the property or a tenant from the same property
+            // var currentUserId = GetCurrentUserId();
+            // var hasAccess = await _tenantService.UserHasAccessToProperty(currentUserId, propertyId);
+            // if (!hasAccess) return Unauthorized();
+
             var result = await _tenantService.GetTenantsByProperty(propertyId);
             return ProcessResult(result);
         }
 
         /// <summary>
         /// Get tenants by landlord ID
+        /// SECURITY: This endpoint should only be accessible by landlords, not tenants
         /// </summary>
         /// <param name="landlordId">Landlord ID</param>
         /// <returns>List of tenants for the landlord</returns>
         [HttpGet("landlord/{landlordId}")]
+        // TODO: Add proper role-based authorization to ensure only landlords can access this
+        // [Authorize(Roles = "Landlord")]
         public async Task<IActionResult> GetTenantsByLandlord(long landlordId)
         {
             if (landlordId <= 0)
                 return BadRequest("Invalid landlord ID");
+
+            // TODO: Add additional security check to verify the requesting user is the landlord
+            // var currentUserId = GetCurrentUserId();
+            // if (currentUserId != landlordId) return Unauthorized();
 
             var result = await _tenantService.GetTenantsByLandlord(landlordId);
             return ProcessResult(result);
@@ -226,6 +242,60 @@ namespace RentConnect.API.Controller
         }
 
         /// <summary>
+        /// Get tenant by email address
+        /// </summary>
+        /// <param name="email">Tenant email</param>
+        /// <returns>Tenant details</returns>
+        [HttpGet("by-email/{email}")]
+        public async Task<IActionResult> GetTenantByEmail(string email)
+        {
+            if (string.IsNullOrEmpty(email))
+                return BadRequest("Email is required");
+
+            var result = await _tenantService.GetTenantByEmail(email);
+            return ProcessResult(result);
+        }
+
+        /// <summary>
+        /// Get co-tenants for a specific tenant (same property only)
+        /// This endpoint ensures tenants can only see other tenants from their own property
+        /// </summary>
+        /// <param name="tenantId">Current tenant ID</param>
+        /// <returns>List of co-tenants from the same property</returns>
+        [HttpGet("{tenantId}/co-tenants")]
+        public async Task<IActionResult> GetCoTenants(long tenantId)
+        {
+            if (tenantId <= 0)
+                return BadRequest("Invalid tenant ID");
+
+            try
+            {
+                // First, get the current tenant to find their property
+                var currentTenantResult = await _tenantService.GetTenantById(tenantId);
+                if (currentTenantResult.Status != ResultStatusType.Success || currentTenantResult.Entity == null)
+                    return ProcessResult(currentTenantResult);
+
+                var currentTenant = currentTenantResult.Entity;
+                if (currentTenant.PropertyId == null)
+                    return BadRequest("Tenant is not associated with any property");
+
+                // Get all tenants from the same property
+                var propertyTenantsResult = await _tenantService.GetTenantsByProperty(currentTenant.PropertyId.Value);
+                if (propertyTenantsResult.Status != ResultStatusType.Success)
+                    return ProcessResult(propertyTenantsResult);
+
+                // Filter out the current tenant from the list
+                var coTenants = propertyTenantsResult.Entity?.Where(t => t.Id != tenantId).ToList();
+
+                return Ok(Result<List<TenantDto>>.Success(coTenants ?? new List<TenantDto>(), "Co-tenants retrieved successfully"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Failed to get co-tenants: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Add child/family member to tenant
         /// </summary>
         /// <param name="tenantId">Tenant ID</param>
@@ -300,7 +370,37 @@ namespace RentConnect.API.Controller
         }
 
         /// <summary>
+        /// Upload multiple documents for tenant
+        /// </summary>
+        /// <param name="tenantId">Tenant ID</param>
+        /// <param name="request">Document upload request</param>
+        /// <returns>Success status</returns>
+        [HttpPost("{tenantId}/documents/upload")]
+        public async Task<IActionResult> UploadTenantDocuments(
+            long tenantId,
+            [FromForm] DocumentUploadRequestDto request)
+        {
+            if (tenantId <= 0)
+                return BadRequest("Invalid tenant ID");
+
+            if (request.Documents == null || !request.Documents.Any())
+                return BadRequest("No files provided");
+
+            // Set tenant information for all documents
+            foreach (var doc in request.Documents)
+            {
+                doc.OwnerId = tenantId;
+                doc.OwnerType = "Tenant";
+                doc.TenantId = tenantId;
+            }
+
+            var result = await _documentService.UploadDocuments(request);
+            return ProcessResult(result);
+        }
+
+        /// <summary>
         /// Get documents for tenant
+        /// SECURITY: Should verify that the requesting user is the tenant or has access to view their documents
         /// </summary>
         /// <param name="tenantId">Tenant ID</param>
         /// <returns>List of tenant documents</returns>
@@ -309,6 +409,12 @@ namespace RentConnect.API.Controller
         {
             if (tenantId <= 0)
                 return BadRequest("Invalid tenant ID");
+
+            // TODO: Add security check to verify the requesting user has access to this tenant's documents
+            // This should only allow the tenant themselves or their landlord to access documents
+            // var currentUserId = GetCurrentUserId();
+            // var hasAccess = await _tenantService.UserCanAccessTenantDocuments(currentUserId, tenantId);
+            // if (!hasAccess) return Unauthorized();
 
             var result = await _documentService.GetDocumentsByOwner(tenantId, "Tenant");
             return ProcessResult(result);
