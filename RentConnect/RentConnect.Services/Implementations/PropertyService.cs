@@ -27,13 +27,13 @@ namespace RentConnect.Services.Implementations
             {
                 var properties = await _context.Property
                     .Where(p => p.LandlordId == landlordId && p.IsDeleted == false)
-                    .Include(p => p.Tenants).ThenInclude(x => x.TenantChildren)
+                    .Include(p => p.Tenants)
                     .ToListAsync();
                 var documents = await this._context.Document.Where(x => x.OwnerId == landlordId).ToArrayAsync();
 
                 foreach (var property in properties)
                 {
-                    property.Documents = documents.Where(d => d.PropertyId == property.Id && d.LandlordId == property.LandlordId).ToList(); 
+                    property.Documents = documents.Where(d => d.PropertyId == property.Id && d.LandlordId == property.LandlordId).ToList();
                 }
 
                 var propertyDtos = properties.Select(MapToDto).ToList();
@@ -117,7 +117,7 @@ namespace RentConnect.Services.Implementations
         {
             try
             {
-                var property = await _context.Property.Include(x => x.Tenants).ThenInclude(x => x.TenantChildren).FirstOrDefaultAsync(p => p.Id == id && p.IsDeleted == false); ;
+                var property = await _context.Property.Include(x => x.Tenants).FirstOrDefaultAsync(p => p.Id == id && p.IsDeleted == false);
                 if (property == null)
                 {
                     return Result<long>.Failure("Property not found");
@@ -125,14 +125,7 @@ namespace RentConnect.Services.Implementations
                 bool hasTenants = property.Tenants?.Any() == true;
                 if (hasTenants) { return Result<long>.Failure("This property is associated with a tenant. Please delete the tenant first."); }
 
-                bool primaryHasChildren = property.Tenants?
-                  .Any(t => t.IsPrimary == true && t.TenantChildren?.Any() == true) == true;
 
-
-                if (primaryHasChildren)
-                {
-                    return Result<long>.Failure("This property is associated with a tenant’s children. Please delete the tenant’s children first.");
-                }
 
                 // Soft delete - you might want to implement a IsDeleted flag instead
                 property.IsDeleted = true;
@@ -262,7 +255,7 @@ namespace RentConnect.Services.Implementations
                     DocumentIdentifier = d.Id.ToString(),
                     UploadedOn = d.UploadedOn,
                     IsVerified = d.IsVerified,
-                    File=null
+                    File = null
 
                 }).ToList() ?? new List<Models.Dtos.Document.DocumentDto>()
             };
@@ -421,7 +414,7 @@ namespace RentConnect.Services.Implementations
                 IsNewTenant = tenant.IsNewTenant ?? true,
                 IsPrimary = tenant.IsPrimary ?? false,
                 IsActive = tenant.IsActive ?? true,
-               // NeedsOnboarding = tenant.NeedsOnboarding ?? true,
+                // NeedsOnboarding = tenant.NeedsOnboarding ?? true,
 
                 // Grouping
                 TenantGroup = tenant.TenantGroup,
@@ -434,17 +427,6 @@ namespace RentConnect.Services.Implementations
                 // Navigation Collections
                 Documents = [],
 
-                Children = tenant.TenantChildren?.Select(c => new TenantChildrenDto
-                {
-                    Id = c.Id,
-                    Name = c.Name,
-                    Email = c.Email,
-                    DOB = c.DOB,
-                    Occupation = c.Occupation,
-                    TenantGroupId = c.TenantGroupId,
-                    TenantId = c.TenantId,
-
-                }).ToList() ?? new List<TenantChildrenDto>(),
 
                 // Extra UI props
                 PropertyName = tenant.Property.Title,  // assuming `Property.Name` exists

@@ -6,6 +6,7 @@
 
     public class Landlord : BaseEntity
     {
+        public long ApplicationUserId { get; set; } // Foreign key to AspNetUsers
         public DateTime? DateCreated { get; set; }
         public DateTime? DateExpiry { get; set; }
         public bool? IsRenew { get; set; }

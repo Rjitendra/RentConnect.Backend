@@ -15,6 +15,7 @@
         Task<Result<TenantSaveResponseDto>> CreateTenants(TenantCreateRequestDto request);
         Task<Result<TenantSaveResponseDto>> UpdateTenant(TenantCreateRequestDto tenantDto);
         Task<Result<bool>> DeleteTenant(long id);
+        Task<Result<bool>> HardDeleteTenant(long id);
 
         // Onboarding Operations
         Task<Result<IEnumerable<TenantDto>>> GetEligibleTenantsForOnboarding(long landlordId, long propertyId);
@@ -25,10 +26,6 @@
         Task<Result<bool>> AcceptAgreement(long tenantId);
         Task<Result<AgreementStatusDto>> GetAgreementStatus(long tenantId);
 
-        // Children/Family Management
-        Task<Result<TenantChildren>> AddTenantChild(long tenantId, TenantChildren child);
-        Task<Result<bool>> UpdateTenantChild(long tenantId, long childId, TenantChildren childData);
-        Task<Result<bool>> DeleteTenantChild(long tenantId, long childId);
 
         // Document Management
         Task<Result<bool>> UploadTenantDocument(long tenantId, IFormFile file, string category, string description);

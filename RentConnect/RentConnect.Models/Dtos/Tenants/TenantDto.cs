@@ -84,6 +84,10 @@
         public bool? IsActive { get; set; } = true;
         //public bool? NeedsOnboarding { get; set; } = true;
 
+        // Relationship and Email preferences
+        public string? Relationship { get; set; } // 'Adult', 'Child', 'Kid', 'Spouse', 'Parent', 'Sibling', 'Other'
+        public bool? IncludeInEmail { get; set; } = true; // Flag to control if this tenant should receive emails
+
         // Grouping
         public string? TenantGroup { get; set; }
 
@@ -94,7 +98,6 @@
 
         // Navigation Properties
         public List<DocumentDto>? Documents { get; set; } = new();
-        public List<TenantChildrenDto>? Children { get; set; } = new();
 
         // Additional Properties for UI
         public string? PropertyName { get; set; }

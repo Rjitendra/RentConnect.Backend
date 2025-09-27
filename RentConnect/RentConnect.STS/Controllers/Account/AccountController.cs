@@ -139,7 +139,10 @@
                         }
                     }
 
-                    await Events.RaiseAsync(new UserLoginSuccessEvent(user.UserName, user.Id.ToString(), user.UserName));
+                    if (user != null)
+                    {
+                        await Events.RaiseAsync(new UserLoginSuccessEvent(user.UserName ?? string.Empty, user.Id.ToString(), user.UserName ?? string.Empty));
+                    }
 
                     // make sure the returnUrl is still valid, and if so redirect back to authorize
                     // endpoint or a local page the IsLocalUrl check is only necessary if you want to
@@ -201,7 +204,7 @@
                 }
 
                 var claims = await UserManager.GetClaimsAsync(user);
-                string name = claims.FirstOrDefault(c => c.Type == JwtClaimTypes.Name)?.Value;
+                string name = claims.FirstOrDefault(c => c.Type == JwtClaimTypes.Name)?.Value ?? "User";
 
                 var code = await this.UserManager.GenerateEmailConfirmationTokenAsync(user);
                 var callbackUrl = this.Url.EmailConfirmationLink(user.Id, code, this.Request.Scheme);
@@ -253,10 +256,9 @@
 
                 var mailObj = new MailRequestDto()
                 {
-                    ToEmail = user.Email,
+                    ToEmail = user.Email ?? string.Empty,
                     Subject = "RentConnect - Email Verification",
-                    Body = htmlString,
-                    Attachments = null
+                    Body = htmlString
                 };
                 await this.Mailer.SendEmailAsync(mailObj);
                 return View("ResendConfirmationEmail");
@@ -273,7 +275,7 @@
             // Retrieve the user's identity from the authentication context
             var user = HttpContext.User;
 
-            if (user.Identity.IsAuthenticated)
+            if (user.Identity?.IsAuthenticated == true)
             {
                 var subjectId = this.User.Claims.Single(x => x.Type == "sub").Value;
                 int landlordIdInInt = int.Parse(subjectId);
@@ -298,7 +300,7 @@
             // Retrieve the user's identity from the authentication context
             var user = HttpContext.User;
 
-            if (user.Identity.IsAuthenticated)
+            if (user.Identity?.IsAuthenticated == true)
             {
                 var subjectId = this.User.Claims.Single(x => x.Type == "sub").Value;
                 int landlordIdInInt = int.Parse(subjectId);
@@ -404,16 +406,16 @@
         public async Task<IActionResult> Logout(LogoutInputModel model)
         {
             // build a model so the logged out page knows what to display
-            var vm = await BuildLoggedOutViewModelAsync(model.LogoutId);
+            var vm = await BuildLoggedOutViewModelAsync(model.LogoutId ?? string.Empty);
 
-            if (User?.Identity.IsAuthenticated == true)
+            if (User?.Identity?.IsAuthenticated == true)
             {
                 // logout of the MVC app
                 await this.SignInManager.SignOutAsync();
                 await this.HttpContext.SignOutAsync();
 
                 // revoke all user grants effectively logs the user out of all clients
-                var subjectId = this.User.Claims.Single(x => x.Type == "sub").Value;
+                var subjectId = this.User?.Claims.Single(x => x.Type == "sub").Value;
                 var c = new PersistedGrantFilter { SubjectId = subjectId };
                 var grants = await this.PersistedGrantStore.GetAllAsync(c);
                 foreach (var grant in grants)
@@ -469,6 +471,11 @@
             {
                 // load the newly created user
                 var user = await this.UserManager.FindByEmailAsync(model.Email);
+                if (user == null)
+                {
+                    this.ModelState.AddModelError(string.Empty, "Failed to retrieve created user.");
+                    return this.View(this.BuildRegistrationViewModel(model));
+                }
 
                 // add user claims
                 var claims = new List<Claim>
@@ -484,7 +491,7 @@
 
                 Landlord landlord = new Landlord()
                 {
-                    // Id = user.Id,
+                    ApplicationUserId = user.Id, // Link to the created AspNetUser
                     DateCreated = applicationUser.DateCreated.Value,
                     DateExpiry = applicationUser.DateCreated.Value.AddMonths(2),
                     IsRenew = false
@@ -521,7 +528,7 @@
                 // send confirmation email
                 var code = await this.UserManager.GenerateEmailConfirmationTokenAsync(user);
                 var callbackUrl = this.Url.EmailConfirmationLink(user.Id, code, this.Request.Scheme);
-                string name = claims.FirstOrDefault(c => c.Type == JwtClaimTypes.Name).Value;
+                string name = claims.FirstOrDefault(c => c.Type == JwtClaimTypes.Name)?.Value ?? "User";
                 string link = HtmlEncoder.Default.Encode(callbackUrl);
                 string htmlString = $@"
                                             <!DOCTYPE html>
@@ -569,10 +576,9 @@
 
                 var mailObj = new MailRequestDto()
                 {
-                    ToEmail = user.Email,
+                    ToEmail = user.Email ?? string.Empty,
                     Subject = "RentConnect - Registration Confirmation",
-                    Body = htmlString,
-                    Attachments = null
+                    Body = htmlString
                 };
                 await this.Mailer.SendEmailAsync(mailObj);
 
@@ -658,6 +664,11 @@
                 }
 
                 var user = await this.UserManager.FindByEmailAsync(model.Email);
+                if (user == null)
+                {
+                    this.ModelState.AddModelError(string.Empty, "Failed to retrieve created user.");
+                    return this.View(this.BuildRegistrationViewModel(model));
+                }
 
                 // 2. Add claims
                 var claims = new List<Claim>
@@ -674,6 +685,7 @@
                 // 3. Create landlord record
                 var landlord = new Landlord
                 {
+                    ApplicationUserId = user.Id, // Link to the created AspNetUser
                     DateCreated = applicationUser.DateCreated.Value,
                     DateExpiry = applicationUser.DateCreated.Value.AddMonths(2),
                     IsRenew = false
@@ -772,7 +784,7 @@
 
                 var mailObj = new MailRequestDto
                 {
-                    ToEmail = user.Email,
+                    ToEmail = user.Email ?? string.Empty,
                     Subject = "RentConnect - Registration Confirmation",
                     Body = htmlString
                 };
@@ -800,45 +812,45 @@
         }
 
         [HttpGet]
-        public IActionResult ForgotPassword()
+public IActionResult ForgotPassword()
+{
+    return this.View();
+}
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
+{
+    try
+    {
+        if (ModelState.IsValid)
         {
-            return this.View();
-        }
+            ViewBag.errorMessage = new HtmlString("<p>An email has been sent to your registered email.</p> Please check your email and follow the instructions. <p>Please check your Spam folder for the email if you've not recieved. </p>");
+            var user = await this.UserManager.FindByEmailAsync(model.Email);
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
-        {
-            try
-            {
-                if (ModelState.IsValid)
-                {
-                    ViewBag.errorMessage = new HtmlString("<p>An email has been sent to your registered email.</p> Please check your email and follow the instructions. <p>Please check your Spam folder for the email if you've not recieved. </p>");
-                    var user = await this.UserManager.FindByEmailAsync(model.Email);
+            if (user == null)
+            { // reveal that the user does not exist or is not confirmed
+                ViewBag.errorMessage = "User Not Found";
+                return View("ForgotPasswordConfirmation");
+            }
 
-                    if (user == null)
-                    { // reveal that the user does not exist or is not confirmed
-                        ViewBag.errorMessage = "User Not Found";
-                        return View("ForgotPasswordConfirmation");
-                    }
+            if (!(await this.UserManager.IsEmailConfirmedAsync(user)))
+            { // reveal that the user does not exist or is not confirmed
+                ViewBag.errorMessage = new HtmlString($"<p>Your email address has not been confirmed yet. Please check your email and follow the instructions to confirm your email address.</p><p>If you haven't received the confirmation email, you can request a new one by clicking <a href=\"{Url.Action("EmailConfirmationRequired")}\">here</a>.</p>");
 
-                    if (!(await this.UserManager.IsEmailConfirmedAsync(user)))
-                    { // reveal that the user does not exist or is not confirmed
-                        ViewBag.errorMessage = new HtmlString($"<p>Your email address has not been confirmed yet. Please check your email and follow the instructions to confirm your email address.</p><p>If you haven't received the confirmation email, you can request a new one by clicking <a href=\"{Url.Action("EmailConfirmationRequired")}\">here</a>.</p>");
+                return View("ForgotPasswordConfirmation");
+            }
 
-                        return View("ForgotPasswordConfirmation");
-                    }
+            var code = await UserManager.GeneratePasswordResetTokenAsync(user);
+            var callbackUrl = this.Url.ResetPasswordCallbackLink(user.Id, code, this.Request.Scheme);
+            // Get the name and link from the claims and callbackUrl, respectively
+            // Get the current user's claims
+            var claims = await UserManager.GetClaimsAsync(user);
+            string name = claims.FirstOrDefault(c => c.Type == JwtClaimTypes.Name)?.Value ?? "User";
+            string link = HtmlEncoder.Default.Encode(callbackUrl);
 
-                    var code = await UserManager.GeneratePasswordResetTokenAsync(user);
-                    var callbackUrl = this.Url.ResetPasswordCallbackLink(user.Id, code, this.Request.Scheme);
-                    // Get the name and link from the claims and callbackUrl, respectively
-                    // Get the current user's claims
-                    var claims = await UserManager.GetClaimsAsync(user);
-                    string name = claims.FirstOrDefault(c => c.Type == JwtClaimTypes.Name)?.Value;
-                    string link = HtmlEncoder.Default.Encode(callbackUrl);
-
-                    // Load the HTML template
-                    string htmlTemplate = $@"
+            // Load the HTML template
+            string htmlTemplate = $@"
                                         <!DOCTYPE html>
                                         <html>
                                         <head>
@@ -921,289 +933,294 @@
                                         </body>
                                         </html>";
 
-                    var mailObj = new MailRequestDto()
-                    {
-                        ToEmail = user.Email,
-                        Subject = "RentConnect - Rest Password",
-                        Body = htmlTemplate,
-                        Attachments = null
-                    };
-                    await this.Mailer.SendEmailAsync(mailObj);
-                    return View("ForgotPasswordConfirmation");
-                }
-
-                // If we got this far, something failed, redisplay form
-                return View(model);
-            }
-            catch (Exception ex) { throw ex; }
-        }
-
-        public IActionResult Lockout()
-        {
-            return this.View();
-        }
-
-        [HttpGet]
-        [AllowAnonymous]
-        public async Task<IActionResult> ResetPasswordTenant(string email = null)
-        {
-            if (email == null)
+            var mailObj = new MailRequestDto()
             {
-                throw new ApplicationException("A email must be supplied for password reset.");
-            }
-            var user = await this.UserManager.FindByEmailAsync(email);
-            var code = await UserManager.GeneratePasswordResetTokenAsync(user);
-
-            var model = new ResetPasswordViewModel { Code = code, Email = email };
-            return this.RedirectToAction(nameof(this.ResetPassword), new { code });
-        }
-
-        [HttpGet]
-        [AllowAnonymous]
-        public IActionResult ResetPassword(string code = null)
-        {
-            if (code == null)
-            {
-                throw new ApplicationException("A code must be supplied for password reset.");
-            }
-
-            ResetPasswordViewModel model = new ResetPasswordViewModel { Code = code };
-            return this.View(model);
-        }
-
-        [HttpPost]
-        [AllowAnonymous]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model)
-        {
-            if (!this.ModelState.IsValid)
-            {
-                return this.View(model);
-            }
-
-            var user = await this.UserManager.FindByEmailAsync(model.Email);
-            if (user == null)
-            {
-                // don't reveal that the user does not exist
-                return this.RedirectToAction(nameof(this.ResetPasswordConfirmation));
-            }
-
-            var result = await this.UserManager.ResetPasswordAsync(user, model.Code, model.Password);
-            if (result.Succeeded)
-            {
-                if (user.LockoutEnabled)
-                {
-                    user.LockoutEnabled = false;
-                    await this.UserManager.UpdateAsync(user);
-                }
-
-                return this.RedirectToAction(nameof(this.ResetPasswordConfirmation));
-            }
-
-            // on failure, add errors to model
-            foreach (var error in result.Errors)
-            {
-                this.ModelState.AddModelError(string.Empty, error.Description);
-            }
-
-            return this.View();
-        }
-
-        [HttpGet]
-        [AllowAnonymous]
-        public IActionResult ResetPasswordConfirmation()
-        {
-            return this.View();
-        }
-
-        /// <summary>
-        /// Constructs logged out view model.
-        /// </summary>
-        /// <param name="logoutId"></param>
-        /// <returns></returns>
-        private async Task<LoggedOutViewModel> BuildLoggedOutViewModelAsync(string logoutId)
-        {
-            // get context information (client name, post logout redirect URI and iframe for
-            // federated signout)
-            var logout = await Interaction.GetLogoutContextAsync(logoutId);
-
-            var vm = new LoggedOutViewModel
-            {
-                AutomaticRedirectAfterSignOut = AccountOptions.AutomaticRedirectAfterSignOut,
-                PostLogoutRedirectUri = logout?.PostLogoutRedirectUri,
-                ClientName = string.IsNullOrEmpty(logout?.ClientName) ? logout?.ClientId : logout?.ClientName,
-                SignOutIframeUrl = logout?.SignOutIFrameUrl,
-                LogoutId = logoutId
+                ToEmail = user.Email ?? string.Empty,
+                Subject = "RentConnect - Rest Password",
+                Body = htmlTemplate
             };
+            await this.Mailer.SendEmailAsync(mailObj);
+            return View("ForgotPasswordConfirmation");
+        }
 
-            if (User?.Identity.IsAuthenticated == true)
+        // If we got this far, something failed, redisplay form
+        return View(model);
+    }
+    catch (Exception) { throw; }
+}
+
+public IActionResult Lockout()
+{
+    return this.View();
+}
+
+[HttpGet]
+[AllowAnonymous]
+public async Task<IActionResult> ResetPasswordTenant(string? email = null)
+{
+    if (email == null)
+    {
+        throw new ApplicationException("A email must be supplied for password reset.");
+    }
+    var user = await this.UserManager.FindByEmailAsync(email);
+    if (user == null)
+    {
+        throw new ApplicationException("User not found for password reset.");
+    }
+    var code = await UserManager.GeneratePasswordResetTokenAsync(user);
+
+    var model = new ResetPasswordViewModel { Code = code, Email = email };
+    return this.RedirectToAction(nameof(this.ResetPassword), new { code });
+}
+
+[HttpGet]
+[AllowAnonymous]
+public IActionResult ResetPassword(string? code = null)
+{
+    if (code == null)
+    {
+        throw new ApplicationException("A code must be supplied for password reset.");
+    }
+
+    ResetPasswordViewModel model = new ResetPasswordViewModel { Code = code };
+    return this.View(model);
+}
+
+[HttpPost]
+[AllowAnonymous]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model)
+{
+    if (!this.ModelState.IsValid)
+    {
+        return this.View(model);
+    }
+
+    var user = await this.UserManager.FindByEmailAsync(model.Email);
+    if (user == null)
+    {
+        // don't reveal that the user does not exist
+        return this.RedirectToAction(nameof(this.ResetPasswordConfirmation));
+    }
+
+    var result = await this.UserManager.ResetPasswordAsync(user, model.Code, model.Password);
+    if (result.Succeeded)
+    {
+        if (user.LockoutEnabled)
+        {
+            user.LockoutEnabled = false;
+            await this.UserManager.UpdateAsync(user);
+        }
+
+        return this.RedirectToAction(nameof(this.ResetPasswordConfirmation));
+    }
+
+    // on failure, add errors to model
+    foreach (var error in result.Errors)
+    {
+        this.ModelState.AddModelError(string.Empty, error.Description);
+    }
+
+    return this.View();
+}
+
+[HttpGet]
+[AllowAnonymous]
+public IActionResult ResetPasswordConfirmation()
+{
+    return this.View();
+}
+
+/// <summary>
+/// Constructs logged out view model.
+/// </summary>
+/// <param name="logoutId"></param>
+/// <returns></returns>
+private async Task<LoggedOutViewModel> BuildLoggedOutViewModelAsync(string logoutId)
+{
+    // get context information (client name, post logout redirect URI and iframe for
+    // federated signout)
+    var logout = await Interaction.GetLogoutContextAsync(logoutId);
+
+    var vm = new LoggedOutViewModel
+    {
+        AutomaticRedirectAfterSignOut = AccountOptions.AutomaticRedirectAfterSignOut,
+        PostLogoutRedirectUri = logout?.PostLogoutRedirectUri ?? string.Empty,
+        ClientName = string.IsNullOrEmpty(logout?.ClientName) ? logout?.ClientId ?? string.Empty : logout?.ClientName ?? string.Empty,
+        SignOutIframeUrl = logout?.SignOutIFrameUrl ?? string.Empty,
+        LogoutId = logoutId ?? string.Empty
+    };
+
+    if (User?.Identity?.IsAuthenticated == true)
+    {
+        var idp = User?.FindFirst(JwtClaimTypes.IdentityProvider)?.Value;
+        if (idp != null && idp != IdentityServerConstants.LocalIdentityProvider)
+        {
+            // New way: resolve the scheme from the authentication scheme provider
+            var schemeProvider = HttpContext.RequestServices.GetRequiredService<IAuthenticationSchemeProvider>();
+            var scheme = await schemeProvider.GetSchemeAsync(idp);
+            if (scheme != null)
             {
-                var idp = User.FindFirst(JwtClaimTypes.IdentityProvider)?.Value;
-                if (idp != null && idp != IdentityServerConstants.LocalIdentityProvider)
-                {
-                    // New way: resolve the scheme from the authentication scheme provider
-                    var schemeProvider = HttpContext.RequestServices.GetRequiredService<IAuthenticationSchemeProvider>();
-                    var scheme = await schemeProvider.GetSchemeAsync(idp);
-                    if (scheme != null)
-                    {
-                        var handlerProvider = HttpContext.RequestServices.GetRequiredService<IAuthenticationHandlerProvider>();
-                        var handler = await handlerProvider.GetHandlerAsync(HttpContext, idp);
+                var handlerProvider = HttpContext.RequestServices.GetRequiredService<IAuthenticationHandlerProvider>();
+                var handler = await handlerProvider.GetHandlerAsync(HttpContext, idp);
 
-                        if (handler is IAuthenticationSignOutHandler)
-                        {
-                            // The external provider supports signout
-                            if (vm.LogoutId == null)
-                            {
-                                // If there's no current logout context, create one
-                                vm.LogoutId = await Interaction.CreateLogoutContextAsync();
-                            }
-                        }
+                if (handler is IAuthenticationSignOutHandler)
+                {
+                    // The external provider supports signout
+                    if (vm.LogoutId == null)
+                    {
+                        // If there's no current logout context, create one
+                        vm.LogoutId = await Interaction.CreateLogoutContextAsync() ?? string.Empty;
                     }
                 }
             }
+        }
+    }
 
-            return vm;
+    return vm;
+}
+
+/// <summary>
+/// Constructs view model for login view.
+/// </summary>
+/// <param name="returnUrl"></param>
+/// <returns></returns>
+private async Task<LoginViewModel> BuildLoginViewModelAsync(string returnUrl)
+{
+    var context = await Interaction.GetAuthorizationContextAsync(returnUrl);
+    var schemes = await SchemeProvider.GetAllSchemesAsync();
+
+    return new LoginViewModel
+    {
+        AllowRememberLogin = AccountOptions.AllowRememberLogin,
+        EnableLocalLogin = AccountOptions.AllowLocalLogin,
+        ReturnUrl = returnUrl,
+        Username = context?.LoginHint ?? string.Empty,
+    };
+}
+
+/// <summary>
+/// Constructs view model for login view based including previous user input.
+/// </summary>
+/// <param name="model"></param>
+/// <returns></returns>
+private async Task<LoginViewModel> BuildLoginViewModelAsync(LoginInputModel model)
+{
+    var vm = await BuildLoginViewModelAsync(model.ReturnUrl);
+    vm.Username = model.Username;
+    vm.RememberLogin = model.RememberLogin;
+
+    return vm;
+}
+
+/// <summary>
+/// Constructs logout view model.
+/// </summary>
+/// <param name="logoutId"></param>
+/// <returns></returns>
+private async Task<LogoutViewModel> BuildLogoutViewModelAsync(string logoutId)
+{
+    var vm = new LogoutViewModel { LogoutId = logoutId, ShowLogoutPrompt = AccountOptions.ShowLogoutPrompt };
+
+    if (User?.Identity?.IsAuthenticated != true)
+    {
+        // if the user is not authenticated, then just show logged out page
+        vm.ShowLogoutPrompt = false;
+        return vm;
+    }
+
+    var context = await Interaction.GetLogoutContextAsync(logoutId);
+    if (context?.ShowSignoutPrompt == false)
+    {
+        // it's safe to automatically sign-out
+        vm.ShowLogoutPrompt = false;
+        return vm;
+    }
+
+    // show the logout prompt. this prevents attacks where the user is automatically signed
+    // out by another malicious web page.
+    return vm;
+}
+
+/// <summary>
+/// Builds registration view model.
+/// </summary>
+/// <param name="model"></param>
+/// <returns></returns>
+private RegistrationViewModel BuildRegistrationViewModel(RegistrationViewModel? model = null)
+{
+    // set the model
+    model = model ?? new RegistrationViewModel();
+
+    return model;
+}
+
+private bool RenewStatus(Landlord landlord)
+{
+    if (!landlord.IsRenew.HasValue || !landlord.IsRenew.Value) { return true; }
+
+    if (!landlord.DateExpiry.HasValue) { return true; }
+
+    TimeSpan diffDays = landlord.DateExpiry.Value.Date - DateTime.Now.Date;
+    if ((diffDays.TotalDays + 1) <= 15) { return true; }
+    return false;
+}
+
+private async Task<bool> UploadAllDocumentsAsync(List<DocumentDto> documents)
+{
+    if (documents == null || !documents.Any())
+        return false;
+
+    using var httpClient = new HttpClient();
+    using var content = new MultipartFormDataContent();
+
+    var streams = new List<Stream>(); // Keep track of opened streams
+
+    try
+    {
+        for (int i = 0; i < documents.Count; i++)
+        {
+            var doc = documents[i];
+            if (doc.File == null || doc.File.Length == 0)
+                continue;
+
+            // Do NOT dispose here, keep it alive until request completes
+            var fileStream = doc.File.OpenReadStream();
+            streams.Add(fileStream);
+
+            var fileContent = new StreamContent(fileStream);
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(doc.File.ContentType);
+
+            // Add file and metadata
+            content.Add(fileContent, $"Documents[{i}].File", doc.File.FileName ?? "file");
+            content.Add(new StringContent(doc.OwnerId?.ToString() ?? "0"), $"Documents[{i}].OwnerId");
+            content.Add(new StringContent(doc.OwnerType ?? string.Empty), $"Documents[{i}].OwnerType");
+            content.Add(new StringContent(((int)(doc.Category ?? 0)).ToString()), $"Documents[{i}].DocumentType");
         }
 
-        /// <summary>
-        /// Constructs view model for login view.
-        /// </summary>
-        /// <param name="returnUrl"></param>
-        /// <returns></returns>
-        private async Task<LoginViewModel> BuildLoginViewModelAsync(string returnUrl)
+        var apiUrl = "http://localhost:6001/api/Document/upload";
+        var response = await httpClient.PostAsync(apiUrl, content);
+
+        if (!response.IsSuccessStatusCode)
         {
-            var context = await Interaction.GetAuthorizationContextAsync(returnUrl);
-            var schemes = await SchemeProvider.GetAllSchemesAsync();
-
-            return new LoginViewModel
-            {
-                AllowRememberLogin = AccountOptions.AllowRememberLogin,
-                EnableLocalLogin = AccountOptions.AllowLocalLogin,
-                ReturnUrl = returnUrl,
-                Username = context?.LoginHint,
-            };
-        }
-
-        /// <summary>
-        /// Constructs view model for login view based including previous user input.
-        /// </summary>
-        /// <param name="model"></param>
-        /// <returns></returns>
-        private async Task<LoginViewModel> BuildLoginViewModelAsync(LoginInputModel model)
-        {
-            var vm = await BuildLoginViewModelAsync(model.ReturnUrl);
-            vm.Username = model.Username;
-            vm.RememberLogin = model.RememberLogin;
-
-            return vm;
-        }
-
-        /// <summary>
-        /// Constructs logout view model.
-        /// </summary>
-        /// <param name="logoutId"></param>
-        /// <returns></returns>
-        private async Task<LogoutViewModel> BuildLogoutViewModelAsync(string logoutId)
-        {
-            var vm = new LogoutViewModel { LogoutId = logoutId, ShowLogoutPrompt = AccountOptions.ShowLogoutPrompt };
-
-            if (User?.Identity.IsAuthenticated != true)
-            {
-                // if the user is not authenticated, then just show logged out page
-                vm.ShowLogoutPrompt = false;
-                return vm;
-            }
-
-            var context = await Interaction.GetLogoutContextAsync(logoutId);
-            if (context?.ShowSignoutPrompt == false)
-            {
-                // it's safe to automatically sign-out
-                vm.ShowLogoutPrompt = false;
-                return vm;
-            }
-
-            // show the logout prompt. this prevents attacks where the user is automatically signed
-            // out by another malicious web page.
-            return vm;
-        }
-
-        /// <summary>
-        /// Builds registration view model.
-        /// </summary>
-        /// <param name="model"></param>
-        /// <returns></returns>
-        private RegistrationViewModel BuildRegistrationViewModel(RegistrationViewModel model = null)
-        {
-            // set the model
-            model = model ?? new RegistrationViewModel();
-
-            return model;
-        }
-
-        private bool RenewStatus(Landlord landlord)
-        {
-            if (!landlord.IsRenew.Value) { return true; }
-
-            TimeSpan diffDays = landlord.DateExpiry.Value.Date - DateTime.Now.Date;
-            if ((diffDays.TotalDays + 1) <= 15) { return true; }
+            var errorMsg = await response.Content.ReadAsStringAsync();
+            // log errorMsg
             return false;
         }
 
-        private async Task<bool> UploadAllDocumentsAsync(List<DocumentDto> documents)
-        {
-            if (documents == null || !documents.Any())
-                return false;
-
-            using var httpClient = new HttpClient();
-            using var content = new MultipartFormDataContent();
-
-            var streams = new List<Stream>(); // Keep track of opened streams
-
-            try
-            {
-                for (int i = 0; i < documents.Count; i++)
-                {
-                    var doc = documents[i];
-                    if (doc.File == null || doc.File.Length == 0)
-                        continue;
-
-                    // Do NOT dispose here, keep it alive until request completes
-                    var fileStream = doc.File.OpenReadStream();
-                    streams.Add(fileStream);
-
-                    var fileContent = new StreamContent(fileStream);
-                    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(doc.File.ContentType);
-
-                    // Add file and metadata
-                    content.Add(fileContent, $"Documents[{i}].File", doc.File.FileName);
-                    content.Add(new StringContent(doc.OwnerId.ToString()), $"Documents[{i}].OwnerId");
-                    content.Add(new StringContent(doc.OwnerType), $"Documents[{i}].OwnerType");
-                    content.Add(new StringContent(((int)doc.Category).ToString()), $"Documents[{i}].DocumentType");
-                }
-
-                var apiUrl = "http://localhost:6001/api/Document/upload";
-                var response = await httpClient.PostAsync(apiUrl, content);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorMsg = await response.Content.ReadAsStringAsync();
-                    // log errorMsg
-                    return false;
-                }
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                // log exception
-                return false;
-            }
-            finally
-            {
-                // Dispose streams AFTER request completes
-                foreach (var stream in streams)
-                    stream.Dispose();
-            }
-        }
+        return true;
+    }
+    catch (Exception)
+    {
+        // log exception
+        return false;
+    }
+    finally
+    {
+        // Dispose streams AFTER request completes
+        foreach (var stream in streams)
+            stream.Dispose();
+    }
+}
     }
 }

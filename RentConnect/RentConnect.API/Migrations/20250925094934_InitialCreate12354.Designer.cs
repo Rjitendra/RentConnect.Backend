@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using RentConnect.Models.Context;
 
@@ -11,9 +12,11 @@ using RentConnect.Models.Context;
 namespace RentConnect.API.Migrations
 {
     [DbContext(typeof(ApiContext))]
-    partial class ApiContextModelSnapshot : ModelSnapshot
+    [Migration("20250925094934_InitialCreate12354")]
+    partial class InitialCreate12354
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -337,9 +340,6 @@ namespace RentConnect.API.Migrations
                         .HasColumnType("bigint");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<long>("ApplicationUserId")
-                        .HasColumnType("bigint");
 
                     b.Property<int?>("BaseVersionId")
                         .HasColumnType("int");
@@ -707,9 +707,6 @@ namespace RentConnect.API.Migrations
                     b.Property<string>("Gender")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool?>("IncludeInEmail")
-                        .HasColumnType("bit");
-
                     b.Property<string>("IpAddress")
                         .HasColumnType("nvarchar(max)");
 
@@ -788,9 +785,6 @@ namespace RentConnect.API.Migrations
                     b.Property<long>("PropertyId")
                         .HasColumnType("bigint");
 
-                    b.Property<string>("Relationship")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<decimal?>("RentAmount")
                         .HasColumnType("decimal(18,2)");
 
@@ -842,6 +836,39 @@ namespace RentConnect.API.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Tenant", "dbo");
+                });
+
+            modelBuilder.Entity("RentConnect.Models.Entities.Tenants.TenantChildren", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("DOB")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Occupation")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TenantGroupId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("TenantId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("TenantChildren", "dbo");
                 });
 
             modelBuilder.Entity("RentConnect.Models.Entities.TicketTracking.Ticket", b =>
@@ -1232,6 +1259,17 @@ namespace RentConnect.API.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("RentConnect.Models.Entities.Tenants.TenantChildren", b =>
+                {
+                    b.HasOne("RentConnect.Models.Entities.Tenants.Tenant", "Tenant")
+                        .WithMany("TenantChildren")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("RentConnect.Models.Entities.TicketTracking.Ticket", b =>
                 {
                     b.HasOne("RentConnect.Models.Entities.Properties.Property", "Property")
@@ -1300,6 +1338,8 @@ namespace RentConnect.API.Migrations
 
             modelBuilder.Entity("RentConnect.Models.Entities.Tenants.Tenant", b =>
                 {
+                    b.Navigation("TenantChildren");
+
                     b.Navigation("Tickets");
                 });
 

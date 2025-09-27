@@ -295,54 +295,6 @@ namespace RentConnect.API.Controller
             }
         }
 
-        /// <summary>
-        /// Add child/family member to tenant
-        /// </summary>
-        /// <param name="tenantId">Tenant ID</param>
-        /// <param name="child">Child information</param>
-        /// <returns>Created child</returns>
-        [HttpPost("{tenantId}/children")]
-        public async Task<IActionResult> AddTenantChild(long tenantId, [FromBody] TenantChildren child)
-        {
-            if (tenantId <= 0)
-                return BadRequest("Invalid tenant ID");
-
-            var result = await _tenantService.AddTenantChild(tenantId, child);
-            return ProcessResult(result);
-        }
-
-        /// <summary>
-        /// Update child/family member information
-        /// </summary>
-        /// <param name="tenantId">Tenant ID</param>
-        /// <param name="childId">Child ID</param>
-        /// <param name="child">Updated child information</param>
-        /// <returns>Success status</returns>
-        [HttpPut("{tenantId}/children/{childId}")]
-        public async Task<IActionResult> UpdateTenantChild(long tenantId, long childId, [FromBody] TenantChildren child)
-        {
-            if (tenantId <= 0 || childId <= 0)
-                return BadRequest("Invalid tenant or child ID");
-
-            var result = await _tenantService.UpdateTenantChild(tenantId, childId, child);
-            return ProcessResult(result);
-        }
-
-        /// <summary>
-        /// Delete child/family member
-        /// </summary>
-        /// <param name="tenantId">Tenant ID</param>
-        /// <param name="childId">Child ID</param>
-        /// <returns>Success status</returns>
-        [HttpDelete("{tenantId}/children/{childId}")]
-        public async Task<IActionResult> DeleteTenantChild(long tenantId, long childId)
-        {
-            if (tenantId <= 0 || childId <= 0)
-                return BadRequest("Invalid tenant or child ID");
-
-            var result = await _tenantService.DeleteTenantChild(tenantId, childId);
-            return ProcessResult(result);
-        }
 
         /// <summary>
         /// Upload document for tenant

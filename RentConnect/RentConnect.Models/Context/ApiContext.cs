@@ -32,7 +32,6 @@
         public virtual DbSet<TicketComment> TicketComment { get; set; }
         public virtual DbSet<TicketAttachment> TicketAttachment { get; set; }
 
-        public virtual DbSet<TenantChildren> TenantChildren { get; set; } // no where we featch Tenant children to show in ui ,it will keep record for who are below 18 year,if future require to make relationship with Tenant then add  TenantChildren as property and make foreginkey rleationship to tenantgroup id
         public virtual DbSet<RentPayment> RentPayment { get; set; }
         public virtual DbSet<RentLatePaymentCharge> RentLatePaymentCharge { get; set; }
         public virtual DbSet<RentPaymentHistory> RentPaymentHistory { get; set; }
@@ -55,7 +54,6 @@
             modelBuilder.Entity<TicketStatus>().ToTable("TicketStatus", "dbo");
             modelBuilder.Entity<TicketComment>().ToTable("TicketComment", "dbo");
             modelBuilder.Entity<TicketAttachment>().ToTable("TicketAttachment", "dbo");
-            modelBuilder.Entity<TenantChildren>().ToTable("TenantChildren", "dbo");
             modelBuilder.Entity<RentPayment>().ToTable("RentPayment", "dbo");
             modelBuilder.Entity<RentLatePaymentCharge>().ToTable("RentLatePaymentCharge", "dbo");
             modelBuilder.Entity<RentPaymentHistory>().ToTable("RentPaymentHistory", "dbo");
@@ -79,11 +77,6 @@
                 .OnDelete(DeleteBehavior.Cascade);
 
 
-            modelBuilder.Entity<Tenant>()
-                .HasMany(t => t.TenantChildren)
-                .WithOne(l => l.Tenant)
-                .HasForeignKey(t => t.TenantId)
-                .OnDelete(DeleteBehavior.Cascade);
 
             // Property → Tenant (1:N)
             modelBuilder.Entity<Tenant>()

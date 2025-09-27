@@ -69,6 +69,10 @@
         public bool? IsPrimary { get; set; }
         public bool? IsActive { get; set; }
 
+        // Relationship and Email preferences
+        public string? Relationship { get; set; } // 'Adult', 'Child', 'Kid', 'Spouse', 'Parent', 'Sibling', 'Other'
+        public bool? IncludeInEmail { get; set; } // Flag to control if this tenant should receive emails
+
         // Audit
         public string? IpAddress { get; set; }
         public DateTime? DateCreated { get; set; }
@@ -97,7 +101,6 @@
 
         // Navigation collections
         public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
-        public ICollection<TenantChildren> TenantChildren { get; set; } = new List<TenantChildren>();
         public ICollection<Document> Documents { get; set; } = new List<Document>();
     }
 }
