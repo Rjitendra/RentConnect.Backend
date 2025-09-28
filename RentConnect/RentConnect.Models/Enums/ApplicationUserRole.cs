@@ -2,12 +2,12 @@
 {
     public enum ApplicationUserRole
     {
-        None = 0,
+        None = 1,
 
-        SuperAdmin = 1,
+        SuperAdmin = 2,
 
-        Landlord = 2,
+        Landlord = 3,
 
-        Tenant = 3,
+        Tenant = 4,
     }
 }

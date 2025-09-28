@@ -174,7 +174,7 @@
                 {
                     userRole.Add(new IdentityUserRole<long>()
                     {
-                        RoleId = (int)role.Id,
+                        RoleId = (long)role.Id,
                         UserId = userId
                     });
                 }

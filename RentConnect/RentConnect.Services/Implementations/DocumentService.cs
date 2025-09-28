@@ -6,6 +6,7 @@
     using RentConnect.Models.Dtos.Document;
     using RentConnect.Models.Dtos.Properties;
     using RentConnect.Models.Entities.Documents;
+    using RentConnect.Models.Enums;
     using RentConnect.Services.Interfaces;
     using RentConnect.Services.Utility;
 
@@ -23,12 +24,12 @@
             try
             {
                 if (request.Documents == null || !request.Documents.Any())
-                    return Result<IEnumerable<DocumentDto>>.Failure("Property not found");
+                    return Result<IEnumerable<DocumentDto>>.Failure("Documents not found");
 
                 var savedDocs = new List<Document>();
                 foreach (var doc in request.Documents.Where(d => d.File != null && d.File.Length > 0))
                 {
-                    var fileUrl = await SaveFileAsync(doc.File, doc.OwnerType, doc.OwnerId.Value);
+                    var fileUrl = await SaveFileAsync(doc.File, doc.OwnerType, doc.OwnerId.Value, doc.Category.Value);
                     savedDocs.Add(new Document
                     {
                         OwnerId = doc.OwnerId,
@@ -42,8 +43,8 @@
                         Size = doc.File.Length,
                         Type = doc.File.ContentType,
                         Description = doc.Description,
-                        UploadedOn = DateTime.UtcNow.ToString("o"), // Keep consistent with current entity
-                        IsVerified = true, // Keep consistent with current defaults
+                        UploadedOn = DateTime.UtcNow.ToString("o"), 
+                        IsVerified = true, 
                         DocumentIdentifier = null
                     });
                 }
@@ -212,9 +213,11 @@
             }
         }
 
-        private async Task<string> SaveFileAsync(IFormFile file, string ownerType, long ownerId)
+        private async Task<string> SaveFileAsync(IFormFile file, string ownerType, long ownerId, DocumentCategory category)
         {
-            var uploadPath = Path.Combine("wwwroot/uploads", ownerType, ownerId.ToString());
+            // Get the enum name as string
+            var categoryType = category.ToString(); // "IdProof", "Other", etc.
+            var uploadPath = Path.Combine("wwwroot/uploads", ownerType, ownerId.ToString(), categoryType);
             Directory.CreateDirectory(uploadPath);
 
             var fileName = $"{Guid.NewGuid()}_{file.FileName}";
@@ -225,7 +228,7 @@
                 await file.CopyToAsync(stream);
             }
 
-            return $"/uploads/{ownerType}/{ownerId}/{fileName}";
+            return $"/uploads/{ownerType}/{ownerId}/{categoryType}/{fileName}";
         }
     }
 }

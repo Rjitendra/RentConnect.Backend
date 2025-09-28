@@ -1627,28 +1627,36 @@ namespace RentConnect.Services.Implementations
         {
             var createdUsers = new Dictionary<string, long>();
 
-            foreach (var tenant in tenants)
+            // Filter out tenants that need user accounts (have email and don't already have AspNetUser)
+            var tenantsNeedingUsers = tenants.Where(t => !string.IsNullOrEmpty(t.Email)).ToList();
+
+            foreach (var tenant in tenantsNeedingUsers)
             {
                 try
                 {
                     var applicationUserDto = MapTenantToApplicationUser(tenant);
+
+                    // Use UserService to create the user with proper role assignment
                     var userId = _userService.CreateUser(applicationUserDto);
 
                     if (userId > 0)
                     {
                         createdUsers[tenant.Email ?? string.Empty] = userId;
+                        Console.WriteLine($"✅ Created AspNetUser for tenant: {tenant.Email} with Tenant role (ID: {userId})");
                     }
                     else if (userId == -1)
                     {
-                        // User already exists - this might be acceptable for updates
-                        // You can handle this based on your business logic
-                        Console.WriteLine($"User already exists for email: {tenant.Email}");
+                        // User already exists - this is acceptable for tenant updates
+                        Console.WriteLine($"ℹ️ AspNetUser already exists for tenant: {tenant.Email}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"❌ Failed to create AspNetUser for tenant: {tenant.Email}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    // Log the error but continue with other tenants
-                    Console.WriteLine($"Failed to create user for tenant {tenant.Email}: {ex.Message}");
+                    Console.WriteLine($"❌ Exception creating AspNetUser for tenant {tenant.Email}: {ex.Message}");
                 }
             }
 

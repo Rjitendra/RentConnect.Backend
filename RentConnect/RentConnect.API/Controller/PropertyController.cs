@@ -113,9 +113,9 @@ namespace RentConnect.API.Controller
                             PropertyId = propertyId,
                             TenantId = d.TenantId,
                             Url = null,
-                            Name = d.File.FileName,
-                            Size = d.File.Length,
-                            Type = d.File.ContentType,
+                            Name = d?.File?.FileName??"",
+                            Size = d?.File?.Length??0,
+                            Type = d?.File?.ContentType ?? "",
                             UploadedOn = DateTime.UtcNow.ToString("o"), // Keep consistent with current entity
                             IsVerified = true,
                             DocumentIdentifier = null
@@ -126,8 +126,6 @@ namespace RentConnect.API.Controller
                     // Call document controller to upload files
                     var documentResult = await _documentService.UploadDocuments(documentUploadRequest);
 
-                    // Note: Document upload failure won't fail the property creation
-                    // You might want to log this or handle it differently based on business requirements
                 }
 
                 return ProcessResult(propertyResult);
@@ -174,9 +172,9 @@ namespace RentConnect.API.Controller
                             PropertyId = request.Id,
                             TenantId = d.TenantId,
                             Url = null,
-                            Name = d.File.FileName,
-                            Size = d.File.Length,
-                            Type = d.File.ContentType,
+                            Name = d?.File?.FileName ?? "",
+                            Size = d?.File?.Length ?? 0,
+                            Type = d?.File?.ContentType ?? "",
                             UploadedOn = DateTime.UtcNow.ToString("o"), // Keep consistent with current entity
                             IsVerified = true,
                             DocumentIdentifier = null

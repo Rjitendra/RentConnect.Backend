@@ -298,7 +298,8 @@ namespace RentConnect.Services.Implementations
                 HasGasPipeline = dto.HasGasPipeline,
                 HasSecurity = dto.HasSecurity,
                 HasInternet = dto.HasInternet,
-                Status = dto.Status
+                Status = dto.Status,
+
             };
         }
 
@@ -339,7 +340,7 @@ namespace RentConnect.Services.Implementations
             entity.Status = dto.Status;
         }
 
-        private TenantDto MapEntityTenantDto(Models.Entities.Tenants.Tenant tenant)
+        private TenantDto MapEntityTenantDto(Tenant tenant)
         {
             if (tenant == null) return null;
 
@@ -399,10 +400,7 @@ namespace RentConnect.Services.Implementations
                 OnboardingEmailDate = tenant.OnboardingEmailDate,
                 OnboardingCompleted = tenant.OnboardingCompleted,
 
-                // Files
-                //BackgroundCheckFileUrl = tenant.BackgroundCheckFileUrl,
-                //RentGuideFileUrl = tenant.RentGuideFileUrl,
-                //DepositReceiptUrl = tenant.DepositReceiptUrl,
+                
 
                 // Acknowledgement / Verification
                 IsAcknowledge = tenant.IsAcknowledge ?? false,
@@ -430,10 +428,7 @@ namespace RentConnect.Services.Implementations
 
                 // Extra UI props
                 PropertyName = tenant.Property.Title,  // assuming `Property.Name` exists
-                //TenantCount = tenant.Property?.Tenants?.Count ?? 0,
-                //StatusDisplay = tenant.IsActive == true ? "Active" : "Inactive",
-                //StatusClass = tenant.IsActive == true ? "status-active" : "status-inactive",
-                //StatusIcon = tenant.IsActive == true ? "check_circle" : "cancel"
+               
             };
         }
 
