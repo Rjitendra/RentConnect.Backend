@@ -1,14 +1,4 @@
-﻿
-using Microsoft.AspNetCore.Http;
-using RentConnect.Models.Dtos;
-using RentConnect.Models.Dtos.Document;
-using RentConnect.Models.Dtos.Tenants;
-using RentConnect.Models.Entities.Tenants;
-using RentConnect.Models.Enums;
-using RentConnect.Services.Utility;
-using System.Text.RegularExpressions;
-
-namespace RentConnect.Services.Implementations
+﻿namespace RentConnect.Services.Implementations
 {
     using Microsoft.AspNetCore.Http;
     using Microsoft.EntityFrameworkCore;
@@ -80,8 +70,7 @@ namespace RentConnect.Services.Implementations
                     .Include(t => t.Landlord)
                     .FirstOrDefaultAsync(t => t.Id == id);
 
-                if (tenant == null)
-                    return Result<TenantDto>.NotFound();
+                if (tenant == null) return Result<TenantDto>.NotFound();
 
                 var tenantDto = await MapToDto(tenant);
                 return Result<TenantDto>.Success(tenantDto);
@@ -1088,6 +1077,7 @@ namespace RentConnect.Services.Implementations
 
         private string GenerateAgreementEmailBody(Tenant tenant)
         {
+            var confirmationUrl = $"{_serverSettings.BaseUrl}/Account/ResetPasswordTenant?email={HttpUtility.UrlEncode(tenant.Email)}";
             return $@"
 <!DOCTYPE html>
 <html>
@@ -1131,7 +1121,7 @@ namespace RentConnect.Services.Implementations
             <p>Please log in to your tenant portal to review and accept the agreement:</p>
             
             <div style='text-align: center;'>
-                <a href='#' class='button'>Login to Tenant Portal</a>
+                <a href='{confirmationUrl}' class='button'>Login to Tenant Portal</a>
             </div>
             
             <p>If you have any questions about the agreement terms, please contact your landlord or our support team.</p>
