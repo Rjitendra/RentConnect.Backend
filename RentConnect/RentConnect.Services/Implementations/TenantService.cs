@@ -15,13 +15,71 @@
     using System.Web;
     using RentConnect.Models.Entities.Documents;
 
+    /// <summary>
+    /// Service class responsible for managing tenant operations in the RentConnect system
+    /// </summary>
+    /// <remarks>
+    /// This service provides comprehensive tenant management functionality including:
+    /// 
+    /// <para><strong>Core CRUD Operations:</strong></para>
+    /// - Create, read, update, and delete tenant records
+    /// - Support for both individual and group tenant management
+    /// - Soft delete functionality with business rule enforcement
+    /// 
+    /// <para><strong>Onboarding Operations:</strong></para>
+    /// - Email-based tenant onboarding workflow
+    /// - Age-based eligibility filtering (18+ years)
+    /// - Agreement acceptance requirement validation
+    /// 
+    /// <para><strong>Agreement Management:</strong></para>
+    /// - Rental agreement creation and management
+    /// - Primary tenant agreement acceptance workflow
+    /// - Email notifications for agreement status changes
+    /// 
+    /// <para><strong>Document Management:</strong></para>
+    /// - Tenant document upload and storage
+    /// - Document categorization and organization
+    /// - Integration with document service for file handling
+    /// 
+    /// <para><strong>Statistics & Reporting:</strong></para>
+    /// - Comprehensive tenant statistics for landlords
+    /// - Financial reporting (rent totals, averages)
+    /// - Activity tracking and status reporting
+    /// 
+    /// <para><strong>Key Features:</strong></para>
+    /// - Transaction-based operations for data consistency
+    /// - Comprehensive input validation and error handling
+    /// - Centralized logging for debugging and monitoring
+    /// - Email integration for notifications and onboarding
+    /// - User account creation for tenant portal access
+    /// 
+    /// <para><strong>Business Rules:</strong></para>
+    /// - Primary tenant concept for group management
+    /// - Agreement acceptance restrictions and workflows
+    /// - Age-based onboarding eligibility
+    /// - Soft delete with agreement status considerations
+    /// </remarks>
     public class TenantService : ITenantService
     {
+        #region Constants
+        private const int DEFAULT_LEASE_DURATION = 12;
+        private const int DEFAULT_NOTICE_PERIOD = 30;
+        private const int MINIMUM_AGE_FOR_ONBOARDING = 18;
+        private const int MINIMUM_NAME_LENGTH = 2;
+        private const int AADHAAR_NUMBER_LENGTH = 12;
+        private const int TEMPORARY_PASSWORD_LENGTH = 12;
+        private const string DEFAULT_RELATIONSHIP = "Adult";
+        private const string TENANT_ROLE_NAME = "Tenant";
+        private const string HARD_DELETE_REQUIRED_PREFIX = "HARD_DELETE_REQUIRED|";
+        #endregion
+
+        #region Fields
         private readonly ApiContext _context;
         private readonly IDocumentService _documentService;
         private readonly IMailService _mailService;
         private readonly ServerSettings _serverSettings;
         private readonly IUserService _userService;
+        #endregion
 
         public TenantService(
             ApiContext context,
@@ -39,24 +97,20 @@
 
         #region Core CRUD Operations
 
+        /// <summary>
+        /// Retrieves all tenants from the database with their associated property and landlord information
+        /// </summary>
+        /// <returns>A result containing a collection of tenant DTOs or an error message</returns>
+        /// <remarks>
+        /// This method loads all tenants with their documents and maps them to DTOs.
+        /// Consider using pagination for large datasets to improve performance.
+        /// </remarks>
         public async Task<Result<IEnumerable<TenantDto>>> GetAllTenants()
         {
             try
             {
-                var tenants = await _context.Tenant
-                    .Include(t => t.Property)
-                    .Include(t => t.Landlord)
-                    .ToListAsync();
-
-                var tenantDtos = new List<TenantDto>();
-                foreach (var tenant in tenants)
-                {
-                    var docs = this._context.Document.Where(x => x.LandlordId == tenant.LandlordId && x.PropertyId == tenant.PropertyId && x.TenantId == tenant.Id && x.UploadContext == DocumentUploadContext.TenantCreation).ToList();
-                    tenant.Documents = docs;
-                    var dto = await MapToDto(tenant);
-                    tenantDtos.Add(dto);
-                }
-
+                var tenants = await GetTenantsWithIncludes().ToListAsync();
+                var tenantDtos = await MapTenantsWithDocuments(tenants);
                 return Result<IEnumerable<TenantDto>>.Success(tenantDtos);
             }
             catch (Exception ex)
@@ -65,20 +119,26 @@
             }
         }
 
+        /// <summary>
+        /// Retrieves a specific tenant by their unique identifier
+        /// </summary>
+        /// <param name="id">The unique identifier of the tenant</param>
+        /// <returns>A result containing the tenant DTO or an error message if not found</returns>
+        /// <remarks>
+        /// This method includes property and landlord information along with associated documents.
+        /// Returns NotFound result if the tenant doesn't exist.
+        /// </remarks>
         public async Task<Result<TenantDto>> GetTenantById(long id)
         {
             try
             {
-                var tenant = await _context.Tenant
-                    .Include(t => t.Property)
-                    .Include(t => t.Landlord)
+                var tenant = await GetTenantsWithIncludes()
                     .FirstOrDefaultAsync(t => t.Id == id);
 
                 if (tenant == null)
                     return Result<TenantDto>.NotFound();
-                var docs = this._context.Document.Where(x => x.LandlordId == tenant.LandlordId && x.PropertyId == tenant.PropertyId && x.TenantId == tenant.Id && x.UploadContext == DocumentUploadContext.TenantCreation).ToList();
-                tenant.Documents = docs;
 
+                await LoadTenantDocuments(tenant);
                 var tenantDto = await MapToDto(tenant);
                 return Result<TenantDto>.Success(tenantDto);
             }
@@ -88,25 +148,24 @@
             }
         }
 
+        /// <summary>
+        /// Retrieves all tenants associated with a specific property
+        /// </summary>
+        /// <param name="propertyId">The unique identifier of the property</param>
+        /// <returns>A result containing a collection of tenant DTOs for the specified property</returns>
+        /// <remarks>
+        /// This method is useful for property management operations where you need to see all tenants in a property.
+        /// Includes both active and inactive tenants.
+        /// </remarks>
         public async Task<Result<IEnumerable<TenantDto>>> GetTenantsByProperty(long propertyId)
         {
             try
             {
-                var tenants = await _context.Tenant
+                var tenants = await GetTenantsWithIncludes()
                     .Where(t => t.PropertyId == propertyId)
-                    .Include(t => t.Property)
-                    .Include(t => t.Landlord)
                     .ToListAsync();
 
-                var tenantDtos = new List<TenantDto>();
-                foreach (var tenant in tenants)
-                {
-                    var docs = this._context.Document.Where(x => x.LandlordId == tenant.LandlordId && x.PropertyId == tenant.PropertyId && x.TenantId == tenant.Id && x.UploadContext == DocumentUploadContext.TenantCreation).ToList();
-                    tenant.Documents = docs;
-                    var dto = await MapToDto(tenant);
-                    tenantDtos.Add(dto);
-                }
-
+                var tenantDtos = await MapTenantsWithDocuments(tenants);
                 return Result<IEnumerable<TenantDto>>.Success(tenantDtos);
             }
             catch (Exception ex)
@@ -115,25 +174,24 @@
             }
         }
 
+        /// <summary>
+        /// Retrieves all active tenants associated with a specific landlord
+        /// </summary>
+        /// <param name="landlordId">The unique identifier of the landlord</param>
+        /// <returns>A result containing a collection of active tenant DTOs for the specified landlord</returns>
+        /// <remarks>
+        /// This method filters for active and non-deleted tenants only.
+        /// Used primarily for landlord dashboard and management operations.
+        /// </remarks>
         public async Task<Result<IEnumerable<TenantDto>>> GetTenantsByLandlord(long landlordId)
         {
             try
             {
-                var tenants = await _context.Tenant
+                var tenants = await GetTenantsWithIncludes()
                     .Where(t => t.LandlordId == landlordId && t.IsActive == true && t.IsDeleted == false)
-                    .Include(t => t.Property)
-                    .Include(t => t.Landlord)
                     .ToListAsync();
 
-                var tenantDtos = new List<TenantDto>();
-                foreach (var tenant in tenants)
-                {
-                    var docs = this._context.Document.Where(x => x.LandlordId == tenant.LandlordId && x.PropertyId == tenant.PropertyId && x.TenantId == tenant.Id && x.UploadContext == DocumentUploadContext.TenantCreation).ToList();
-                    tenant.Documents = docs;
-                    var dto = await MapToDto(tenant);
-                    tenantDtos.Add(dto);
-                }
-
+                var tenantDtos = await MapTenantsWithDocuments(tenants);
                 return Result<IEnumerable<TenantDto>>.Success(tenantDtos);
             }
             catch (Exception ex)
@@ -142,24 +200,40 @@
             }
         }
 
+        /// <summary>
+        /// Creates multiple tenants as a group with shared tenancy details
+        /// </summary>
+        /// <param name="request">The tenant creation request containing tenant details and property information</param>
+        /// <returns>A result containing the created tenant DTOs or validation errors</returns>
+        /// <remarks>
+        /// This method:
+        /// - Validates all tenants in the group before creation
+        /// - Ensures exactly one primary tenant is designated
+        /// - Creates a unique tenant group ID for related tenants
+        /// - Handles document uploads for each tenant
+        /// - Updates property status to Listed
+        /// - Uses database transaction for data consistency
+        /// </remarks>
         public async Task<Result<TenantSaveResponseDto>> CreateTenants(TenantCreateRequestDto request)
         {
+            // Input validation
+            if (request == null)
+                return Result<TenantSaveResponseDto>.Failure("Request cannot be null");
+
+            if (request.Tenants == null || !request.Tenants.Any())
+                return Result<TenantSaveResponseDto>.Failure("At least one tenant is required");
+
+            if (!request.PropertyId.HasValue || request.PropertyId <= 0)
+                return Result<TenantSaveResponseDto>.Failure("Valid property ID is required");
+
+            if (!request.LandlordId.HasValue || request.LandlordId <= 0)
+                return Result<TenantSaveResponseDto>.Failure("Valid landlord ID is required");
+
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                foreach (var tenant in request.Tenants)
-                {
-                    tenant.PropertyId = request.PropertyId;
-                    tenant.RentAmount = request.RentAmount;
-                    tenant.SecurityDeposit = request.SecurityDeposit;
-                    tenant.MaintenanceCharges = request.MaintenanceCharges;
-                    tenant.TenancyStartDate = request.TenancyStartDate;
-                    tenant.TenancyEndDate = request.TenancyEndDate; // optional if provided
-                    tenant.RentDueDate = request.RentDueDate;
-                    tenant.LeaseDuration = request.LeaseDuration > 0 ? request.LeaseDuration : 12;
-                    tenant.NoticePeriod = request.NoticePeriod > 0 ? request.NoticePeriod : 30;
-                    tenant.LandlordId = request.LandlordId;
-                }
+                // Apply common request-level values to all tenants
+                ApplyRequestValuesToTenants(request);
 
                 // Validate the request
                 var validationErrors = ValidateTenantGroup(request.Tenants, true);
@@ -200,7 +274,7 @@
                     if (tenantDto.Documents?.Any() == true)
                     {
                         var docDtos = await SaveTenantDocuments(tenant.Id, tenantDto.Documents, DocumentUploadContext.TenantCreation);
-                      
+
                     }
                     var docs = this._context.Document.Where(x => x.LandlordId == tenantDto.LandlordId && x.PropertyId == tenantDto.PropertyId && x.TenantId == tenantDto.Id && x.UploadContext == DocumentUploadContext.TenantCreation).ToList();
                     tenant.Documents = docs;
@@ -234,25 +308,33 @@
             }
         }
 
+        /// <summary>
+        /// Updates existing tenants in a group with new information
+        /// </summary>
+        /// <param name="request">The tenant update request containing modified tenant details</param>
+        /// <returns>A result containing the updated tenant DTOs or validation errors</returns>
+        /// <remarks>
+        /// This method:
+        /// - Validates all tenants before updating
+        /// - Restricts updates if primary tenant has accepted agreement (only email updates allowed)
+        /// - Handles document updates for each tenant
+        /// - Updates property status to Rented
+        /// - Uses database transaction for data consistency
+        /// </remarks>
         public async Task<Result<TenantSaveResponseDto>> UpdateTenant(TenantCreateRequestDto request)
         {
+            // Input validation
+            if (request == null)
+                return Result<TenantSaveResponseDto>.Failure("Request cannot be null");
+
+            if (request.Tenants == null || !request.Tenants.Any())
+                return Result<TenantSaveResponseDto>.Failure("At least one tenant is required");
+
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 // Apply common request-level values to all tenants
-                foreach (var tenant in request.Tenants)
-                {
-                    tenant.PropertyId = request.PropertyId;
-                    tenant.RentAmount = request.RentAmount;
-                    tenant.SecurityDeposit = request.SecurityDeposit;
-                    tenant.MaintenanceCharges = request.MaintenanceCharges;
-                    tenant.TenancyStartDate = request.TenancyStartDate;
-                    tenant.TenancyEndDate = request.TenancyEndDate; // optional
-                    tenant.RentDueDate = request.RentDueDate;
-                    tenant.LeaseDuration = request.LeaseDuration > 0 ? request.LeaseDuration : 12;
-                    tenant.NoticePeriod = request.NoticePeriod > 0 ? request.NoticePeriod : 30;
-                    tenant.LandlordId = request.LandlordId;
-                }
+                ApplyRequestValuesToTenants(request);
 
                 // Validate the whole tenant group
                 var groupValidationErrors = ValidateTenantGroup(request.Tenants, request.IsSingleTenant ?? false);
@@ -324,7 +406,7 @@
                     updatedTenants.Add(updatedDto);
                 }
 
-                 // Update property metadata
+                // Update property metadata
                 var existingProperty = await _context.Property
                     .FirstOrDefaultAsync(p => p.Id == request.PropertyId);
 
@@ -357,8 +439,24 @@
             }
         }
 
+        /// <summary>
+        /// Soft deletes a tenant by marking them as inactive and deleted
+        /// </summary>
+        /// <param name="id">The unique identifier of the tenant to delete</param>
+        /// <returns>A result indicating success or failure with appropriate error messages</returns>
+        /// <remarks>
+        /// This method:
+        /// - Performs soft delete (marks as inactive/deleted rather than removing from database)
+        /// - Prevents deletion of primary tenant if agreement has started
+        /// - Requires hard delete confirmation for non-primary tenants after agreement starts
+        /// - Returns specific error codes for UI handling (HARD_DELETE_REQUIRED)
+        /// </remarks>
         public async Task<Result<bool>> DeleteTenant(long id)
         {
+            // Input validation
+            if (id <= 0)
+                return Result<bool>.Failure("Valid tenant ID is required");
+
             try
             {
                 var tenant = await _context.Tenant.FindAsync(id);
@@ -381,7 +479,7 @@
                     else
                     {
                         // Non-primary tenant - require hard delete confirmation
-                        return Result<bool>.Failure("HARD_DELETE_REQUIRED|Tenancy already started. Hard delete required to remove this tenant.");
+                        return Result<bool>.Failure($"{HARD_DELETE_REQUIRED_PREFIX}Tenancy already started. Hard delete required to remove this tenant.");
                     }
                 }
 
@@ -440,8 +538,28 @@
 
         #region Onboarding Operations
 
+        /// <summary>
+        /// Retrieves tenants eligible for onboarding email notifications
+        /// </summary>
+        /// <param name="landlordId">The unique identifier of the landlord</param>
+        /// <param name="propertyId">The unique identifier of the property</param>
+        /// <returns>A result containing eligible tenants or an error message</returns>
+        /// <remarks>
+        /// Eligible tenants are those who:
+        /// - Are not primary users (primary users handle their own onboarding)
+        /// - Have valid email addresses
+        /// - Have IncludeInEmail flag set to true OR are not children/kids
+        /// - Are currently active
+        /// </remarks>
         public async Task<Result<IEnumerable<TenantDto>>> GetEligibleTenantsForOnboarding(long landlordId, long propertyId)
         {
+            // Input validation
+            if (landlordId <= 0)
+                return Result<IEnumerable<TenantDto>>.Failure("Valid landlord ID is required");
+
+            if (propertyId <= 0)
+                return Result<IEnumerable<TenantDto>>.Failure("Valid property ID is required");
+
             try
             {
                 // Get all tenants for the specific property and landlord where:
@@ -480,40 +598,47 @@
             }
         }
 
+        /// <summary>
+        /// Sends onboarding emails to all eligible tenants for a specific property
+        /// </summary>
+        /// <param name="landlordId">The unique identifier of the landlord</param>
+        /// <param name="propertyId">The unique identifier of the property</param>
+        /// <returns>A result containing the number of emails sent successfully</returns>
+        /// <remarks>
+        /// This method:
+        /// - Filters tenants by age (18+ years old)
+        /// - Only sends to tenants with valid email addresses
+        /// - Requires primary tenant to have accepted agreement first
+        /// - Skips tenants who have already received onboarding emails
+        /// - Updates tenant records with email sent status and timestamp
+        /// </remarks>
         public async Task<Result<int>> SendOnboardingEmails(long landlordId, long propertyId)
         {
+            // Input validation
+            if (landlordId <= 0)
+                return Result<int>.Failure("Valid landlord ID is required");
+
+            if (propertyId <= 0)
+                return Result<int>.Failure("Valid property ID is required");
+
             try
             {
-                // Get all tenants for the specific property and landlord where:
-                // - Age > 18 (calculated from DOB)
-                // - Has email address
-                // - Needs onboarding (hasn't been sent email yet)
-                // - Is active
-                var today = DateTime.Today;
-                var cutoffDate = today.AddYears(-18); // Date 18 years ago
-
                 // Get all tenants for the property with basic filters
-                var allTenants = await _context.Tenant
-                    .Include(t => t.Property)
-                    .Include(t => t.Landlord)
+                var allTenants = await GetTenantsWithIncludes()
                     .Where(t => t.LandlordId == landlordId
                                 && t.PropertyId == propertyId // Specific property
-                                && t.DOB.HasValue && t.DOB.Value <= cutoffDate // Age >= 18
-                                && !string.IsNullOrEmpty(t.Email) // Has email
-                                && t.IsActive.HasValue && t.IsActive.Value // Must be true
                                 && (!t.OnboardingEmailSent.HasValue || !t.OnboardingEmailSent.Value)) // Not sent yet
                     .ToListAsync();
 
+                // Apply age and email filters
+                var ageFilteredTenants = FilterTenantsByAge(allTenants);
+                var emailFilteredTenants = FilterTenantsWithValidEmails(ageFilteredTenants);
+
                 // Filter to only include tenants whose group has accepted agreement
                 var eligibleTenants = new List<Tenant>();
-                foreach (var tenant in allTenants)
+                foreach (var tenant in emailFilteredTenants)
                 {
-                    // Check if primary tenant in this group has accepted agreement
-                    var primaryTenantAccepted = await _context.Tenant
-                        .AnyAsync(t => t.TenantGroup == tenant.TenantGroup
-                                      && t.IsPrimary.HasValue && t.IsPrimary.Value
-                                      && t.AgreementAccepted.HasValue && t.AgreementAccepted.Value);
-
+                    var primaryTenantAccepted = await IsPrimaryTenantAgreementAccepted(tenant.TenantGroup ?? string.Empty);
                     if (primaryTenantAccepted)
                     {
                         eligibleTenants.Add(tenant);
@@ -529,37 +654,16 @@
                 {
                     try
                     {
-                        // Create password reset URL for tenant
-                        var confirmationUrl = $"{_serverSettings.BaseUrl}/Account/ResetPasswordTenant?email={HttpUtility.UrlEncode(tenant.Email ?? string.Empty)}";
-
-                        // Create attachments list (property documents)
-                        var attachmentsList = CreateAttachmentsList(tenant);
-
-                        // Create email request
-                        var mailObj = new MailRequestDto()
+                        var success = await SendOnboardingEmailToTenant(tenant);
+                        if (success)
                         {
-                            ToEmail = tenant.Email ?? string.Empty,
-                            Subject = "Welcome to RentConnect - Complete Your Onboarding",
-                            Body = await CreateOnboardingEmailBodyAsync(tenant.Name ?? "Tenant", confirmationUrl, tenant),
-                            Attachments = attachmentsList
-                        };
-
-                        // Send email
-                        var emailResult = await _mailService.SendEmailAsync(mailObj);
-
-                        if (emailResult.Status == ResultStatusType.Success)
-                        {
-                            // Update tenant onboarding status
-                            tenant.OnboardingEmailSent = true;
-                            tenant.OnboardingEmailDate = DateTime.UtcNow;
-                            tenant.DateModified = DateTime.UtcNow;
                             emailsSent++;
                         }
                     }
                     catch (Exception emailEx)
                     {
                         // Log individual email failures but continue with others
-                        Console.WriteLine($"Failed to send email to tenant {tenant.Id}: {emailEx.Message}");
+                        LogError($"SendOnboardingEmail to tenant {tenant.Id}", emailEx);
                     }
                 }
 
@@ -581,32 +685,26 @@
                 if (tenantIds == null || !tenantIds.Any())
                     return Result<int>.Success(0);
 
-                // Get tenants by IDs where they have email and are active
-                var tenants = await _context.Tenant
-                    .Include(t => t.Property)
-                    .Include(t => t.Landlord)
-                    .Where(t => tenantIds.Contains(t.Id)
-                                && !string.IsNullOrEmpty(t.Email) // Has email
-                                && t.IsActive.HasValue && t.IsActive.Value) // Must be active
+                // Get tenants by IDs
+                var allTenants = await GetTenantsWithIncludes()
+                    .Where(t => tenantIds.Contains(t.Id))
                     .ToListAsync();
+
+                // Filter tenants with valid emails
+                var emailFilteredTenants = FilterTenantsWithValidEmails(allTenants);
 
                 // Filter tenants to only those whose group has an accepted agreement
                 var validTenants = new List<Tenant>();
-                foreach (var tenant in tenants)
+                foreach (var tenant in emailFilteredTenants)
                 {
-                    // Check if primary tenant in this group has accepted agreement
-                    var primaryTenantAccepted = await _context.Tenant
-                        .AnyAsync(t => t.TenantGroup == tenant.TenantGroup
-                                      && t.IsPrimary.HasValue && t.IsPrimary.Value
-                                      && t.AgreementAccepted.HasValue && t.AgreementAccepted.Value);
-
+                    var primaryTenantAccepted = await IsPrimaryTenantAgreementAccepted(tenant.TenantGroup ?? string.Empty);
                     if (primaryTenantAccepted)
                     {
                         validTenants.Add(tenant);
                     }
                 }
 
-                tenants = validTenants;
+                var tenants = validTenants;
 
                 if (!tenants.Any())
                     return Result<int>.Success(0);
@@ -617,37 +715,16 @@
                 {
                     try
                     {
-                        // Create password reset URL for tenant
-                        var confirmationUrl = $"{_serverSettings.BaseUrl}/Account/ResetPasswordTenant?email={HttpUtility.UrlEncode(tenant.Email ?? string.Empty)}";
-
-                        // Create attachments list (property documents)
-                        var attachmentsList = CreateAttachmentsList(tenant);
-
-                        // Create email request
-                        var mailObj = new MailRequestDto()
+                        var success = await SendOnboardingEmailToTenant(tenant);
+                        if (success)
                         {
-                            ToEmail = tenant.Email ?? string.Empty,
-                            Subject = "Welcome to RentConnect - Complete Your Onboarding",
-                            Body = await CreateOnboardingEmailBodyAsync(tenant.Name ?? "Tenant", confirmationUrl, tenant),
-                            Attachments = attachmentsList
-                        };
-
-                        // Send email
-                        var emailResult = await _mailService.SendEmailAsync(mailObj);
-
-                        if (emailResult.Status == ResultStatusType.Success)
-                        {
-                            // Update tenant onboarding status
-                            tenant.OnboardingEmailSent = true;
-                            tenant.OnboardingEmailDate = DateTime.UtcNow;
-                            tenant.DateModified = DateTime.UtcNow;
                             emailsSent++;
                         }
                     }
                     catch (Exception emailEx)
                     {
                         // Log individual email failures but continue with others
-                        Console.WriteLine($"Failed to send email to tenant {tenant.Id}: {emailEx.Message}");
+                        LogError($"SendOnboardingEmail to tenant {tenant.Id}", emailEx);
                     }
                 }
 
@@ -662,8 +739,32 @@
             }
         }
 
+        #endregion
+
+        #region Agreement Management
+
+        /// <summary>
+        /// Creates a rental agreement for a tenant and initiates the agreement process
+        /// </summary>
+        /// <param name="request">The agreement creation request containing tenant information</param>
+        /// <returns>A result containing the agreement URL or an error message</returns>
+        /// <remarks>
+        /// This method:
+        /// - Creates agreement record with generated URL
+        /// - Sets up AspNetUser accounts for all tenants in the group
+        /// - Sends agreement email to the primary tenant
+        /// - Only primary tenant can accept agreements
+        /// - Updates tenant agreement status and timestamps
+        /// </remarks>
         public async Task<Result<string>> CreateAgreement(AgreementCreateRequestDto request)
         {
+            // Input validation
+            if (request == null)
+                return Result<string>.Failure("Request cannot be null");
+
+            if (request.TenantId <= 0)
+                return Result<string>.Failure("Valid tenant ID is required");
+
             try
             {
                 var tenant = await _context.Tenant
@@ -703,7 +804,7 @@
                 // Log successful user creations
                 foreach (var userCreation in createdUserIds)
                 {
-                    Console.WriteLine($"Created AspNetUser for tenant email {userCreation.Key} with ID: {userCreation.Value}");
+                    LogInfo($"Created AspNetUser for tenant email {userCreation.Key} with ID: {userCreation.Value}");
                 }
 
 
@@ -718,8 +819,25 @@
             }
         }
 
+        /// <summary>
+        /// Accepts a rental agreement on behalf of the primary tenant
+        /// </summary>
+        /// <param name="tenantId">The unique identifier of the tenant accepting the agreement</param>
+        /// <returns>A result indicating success or failure of the agreement acceptance</returns>
+        /// <remarks>
+        /// This method:
+        /// - Only allows primary tenants to accept agreements
+        /// - Prevents duplicate acceptance of the same agreement
+        /// - Updates agreement status and acceptance timestamp
+        /// - Sends notification email to the landlord
+        /// - Enables access for all family members in the tenant group
+        /// </remarks>
         public async Task<Result<bool>> AcceptAgreement(long tenantId)
         {
+            // Input validation
+            if (tenantId <= 0)
+                return Result<bool>.Failure("Valid tenant ID is required");
+
             try
             {
                 var tenant = await _context.Tenant
@@ -851,11 +969,35 @@
 
         #endregion
 
-
         #region Document Management
 
+        /// <summary>
+        /// Uploads a document for a specific tenant
+        /// </summary>
+        /// <param name="tenantId">The unique identifier of the tenant</param>
+        /// <param name="file">The file to upload</param>
+        /// <param name="category">The document category (e.g., "IdProof", "AddressProof")</param>
+        /// <param name="description">Optional description for the document</param>
+        /// <returns>A result indicating success or failure of the document upload</returns>
+        /// <remarks>
+        /// This method:
+        /// - Validates tenant existence before upload
+        /// - Associates document with tenant, landlord, and property
+        /// - Uses the document service for actual file storage
+        /// - Supports various document categories for organization
+        /// </remarks>
         public async Task<Result<bool>> UploadTenantDocument(long tenantId, IFormFile file, string category, string description)
         {
+            // Input validation
+            if (tenantId <= 0)
+                return Result<bool>.Failure("Valid tenant ID is required");
+
+            if (file == null || file.Length == 0)
+                return Result<bool>.Failure("Valid file is required");
+
+            if (string.IsNullOrWhiteSpace(category))
+                return Result<bool>.Failure("Document category is required");
+
             try
             {
                 var tenant = await _context.Tenant.FindAsync(tenantId);
@@ -875,7 +1017,7 @@
                             TenantId = tenantId,
                             LandlordId = tenant.LandlordId,
                             PropertyId = tenant.PropertyId,
-                            Category = Enum.Parse<DocumentCategory>(category),
+                            Category = Enum.Parse<DocumentCategory>(category ?? "Other"),
                             Description = description
                         }
                     }
@@ -907,8 +1049,26 @@
 
         #region Statistics & Reports
 
+        /// <summary>
+        /// Generates comprehensive statistics for tenants belonging to a specific landlord
+        /// </summary>
+        /// <param name="landlordId">The unique identifier of the landlord</param>
+        /// <returns>A result containing tenant statistics or an error message</returns>
+        /// <remarks>
+        /// This method calculates:
+        /// - Total number of tenants
+        /// - Count of active vs inactive tenants
+        /// - Number of tenants pending onboarding
+        /// - Total monthly rent collection
+        /// - Average rent per tenant
+        /// Used for landlord dashboard and reporting features.
+        /// </remarks>
         public async Task<Result<TenantStatisticsDto>> GetTenantStatistics(long landlordId)
         {
+            // Input validation
+            if (landlordId <= 0)
+                return Result<TenantStatisticsDto>.Failure("Valid landlord ID is required");
+
             try
             {
                 var tenants = await _context.Tenant
@@ -945,22 +1105,40 @@
 
         #region Validation
 
-
-
+        /// <summary>
+        /// Validates a single tenant's data for completeness and correctness
+        /// </summary>
+        /// <param name="tenant">The tenant DTO to validate</param>
+        /// <param name="create">Whether this is for tenant creation (enables email uniqueness check)</param>
+        /// <returns>A list of validation errors, empty if validation passes</returns>
+        /// <remarks>
+        /// This method validates:
+        /// - Required fields (name, email, phone, DOB, occupation)
+        /// - Data format (Aadhaar number, PAN number)
+        /// - Email uniqueness (only during creation)
+        /// - Business rules (rent amount, property ID)
+        /// </remarks>
         public List<ValidationErrorDto> ValidateTenant(TenantDto tenant, bool create = false)
         {
             var errors = new List<ValidationErrorDto>();
 
-            if (string.IsNullOrWhiteSpace(tenant.Name) || tenant.Name.Length < 2)
-                errors.Add(new ValidationErrorDto { Field = "name", Message = "Name must be at least 2 characters long" });
-            if (create == true)
+            // Input validation
+            if (tenant == null)
             {
-                var email = this._context.Tenant.Where(x => x.Email == tenant.Email.Trim()).ToList();
+                errors.Add(new ValidationErrorDto { Field = "tenant", Message = "Tenant data is required" });
+                return errors;
+            }
+
+            if (string.IsNullOrWhiteSpace(tenant.Name) || tenant.Name.Length < MINIMUM_NAME_LENGTH)
+                errors.Add(new ValidationErrorDto { Field = "name", Message = $"Name must be at least {MINIMUM_NAME_LENGTH} characters long" });
+            if (create == true && !string.IsNullOrWhiteSpace(tenant.Email))
+            {
+                var trimmedEmail = tenant.Email.Trim();
+                var email = this._context.Tenant.Where(x => x.Email == trimmedEmail).ToList();
                 if (email.Any())
                 {
                     errors.Add(new ValidationErrorDto { Field = "email", Message = "Emails already used" });
                 }
-
             }
 
             if (string.IsNullOrWhiteSpace(tenant.Email))
@@ -972,11 +1150,11 @@
             if (tenant.DOB == default)
                 errors.Add(new ValidationErrorDto { Field = "dob", Message = "Date of birth is required" });
 
-            if (string.IsNullOrWhiteSpace(tenant.Occupation) || tenant.Occupation.Length < 2)
+            if (string.IsNullOrWhiteSpace(tenant.Occupation) || tenant.Occupation.Length < MINIMUM_NAME_LENGTH)
                 errors.Add(new ValidationErrorDto { Field = "occupation", Message = "Occupation is required" });
 
             if (string.IsNullOrWhiteSpace(tenant.AadhaarNumber) || !IsValidAadhaar(tenant.AadhaarNumber))
-                errors.Add(new ValidationErrorDto { Field = "aadhaarNumber", Message = "Valid 12-digit Aadhaar number is required" });
+                errors.Add(new ValidationErrorDto { Field = "aadhaarNumber", Message = $"Valid {AADHAAR_NUMBER_LENGTH}-digit Aadhaar number is required" });
 
             if (string.IsNullOrWhiteSpace(tenant.PanNumber) || !IsValidPAN(tenant.PanNumber))
                 errors.Add(new ValidationErrorDto { Field = "PanNumber", Message = "Valid PAN number is required (e.g., ABCDE1234F)" });
@@ -996,9 +1174,31 @@
             return errors;
         }
 
+        /// <summary>
+        /// Validates a group of tenants for consistency and business rules
+        /// </summary>
+        /// <param name="tenants">The list of tenants to validate as a group</param>
+        /// <param name="isSingleTenant">Whether this is a single tenant scenario</param>
+        /// <param name="isCreate">Whether this is for tenant creation</param>
+        /// <returns>A list of validation errors, empty if validation passes</returns>
+        /// <remarks>
+        /// This method validates:
+        /// - At least one tenant is provided
+        /// - Exactly one primary tenant (unless single tenant)
+        /// - Individual tenant validation for each tenant
+        /// - No duplicate email addresses within the group
+        /// - Group-level business rules
+        /// </remarks>
         public List<ValidationErrorDto> ValidateTenantGroup(List<TenantDto> tenants, bool isSingleTenant = false, bool isCreate = false)
         {
             var errors = new List<ValidationErrorDto>();
+
+            // Input validation
+            if (tenants == null)
+            {
+                errors.Add(new ValidationErrorDto { Field = "tenants", Message = "Tenants list cannot be null" });
+                return errors;
+            }
 
             if (!tenants.Any())
             {
@@ -1047,10 +1247,30 @@
 
         #endregion
 
+        #region Email Helper Methods
+
         #region Agreement Email Methods
 
+        /// <summary>
+        /// Sends agreement creation email to the primary tenant
+        /// </summary>
+        /// <param name="tenant">The tenant to send the agreement email to</param>
+        /// <remarks>
+        /// This method:
+        /// - Generates agreement email with property details
+        /// - Includes login URL for tenant portal access
+        /// - Updates tenant record with email sent status
+        /// - Handles email failures gracefully without breaking agreement creation
+        /// </remarks>
         private async Task SendAgreementEmail(Tenant tenant)
         {
+            // Input validation
+            if (tenant == null)
+            {
+                LogError("SendAgreementEmail", new ArgumentNullException(nameof(tenant)));
+                return;
+            }
+
             try
             {
                 if (string.IsNullOrEmpty(tenant.Email))
@@ -1076,7 +1296,7 @@
             catch (Exception ex)
             {
                 // Log error but don't fail the agreement creation
-                Console.WriteLine($"Failed to send agreement email to tenant {tenant.Id}: {ex.Message}");
+                LogError($"SendAgreementEmail to tenant {tenant.Id}", ex);
             }
         }
 
@@ -1164,7 +1384,7 @@
             catch (Exception ex)
             {
                 // Log error but don't fail the agreement acceptance
-                Console.WriteLine($"Failed to send landlord notification for tenant {tenant.Id}: {ex.Message}");
+                LogError($"SendLandlordNotification for tenant {tenant.Id}", ex);
             }
         }
 
@@ -1230,10 +1450,129 @@
 
         #region Private Helper Methods
 
-        private async Task<TenantDto> MapToDto(Tenant tenant)
+        /// <summary>
+        /// Gets tenants with standard includes (Property and Landlord)
+        /// </summary>
+        private IQueryable<Tenant> GetTenantsWithIncludes()
         {
-          
-            return new TenantDto
+            return _context.Tenant
+                .Include(t => t.Property)
+                .Include(t => t.Landlord);
+        }
+
+        /// <summary>
+        /// Loads documents for a single tenant
+        /// </summary>
+        private async Task LoadTenantDocuments(Tenant tenant)
+        {
+            var docs = await _context.Document
+                .Where(x => x.LandlordId == tenant.LandlordId &&
+                           x.PropertyId == tenant.PropertyId &&
+                           x.TenantId == tenant.Id &&
+                           x.UploadContext == DocumentUploadContext.TenantCreation)
+                .ToListAsync();
+            tenant.Documents = docs;
+        }
+
+        /// <summary>
+        /// Maps a list of tenants to DTOs with their documents loaded
+        /// </summary>
+        private async Task<List<TenantDto>> MapTenantsWithDocuments(List<Tenant> tenants)
+        {
+            var tenantDtos = new List<TenantDto>();
+            foreach (var tenant in tenants)
+            {
+                await LoadTenantDocuments(tenant);
+                var dto = await MapToDto(tenant);
+                tenantDtos.Add(dto);
+            }
+            return tenantDtos;
+        }
+
+        /// <summary>
+        /// Applies common request-level values to all tenants in the request
+        /// </summary>
+        private void ApplyRequestValuesToTenants(TenantCreateRequestDto request)
+        {
+            if (request?.Tenants == null) return;
+
+            foreach (var tenant in request.Tenants)
+            {
+                tenant.PropertyId = request.PropertyId;
+                tenant.RentAmount = request.RentAmount;
+                tenant.SecurityDeposit = request.SecurityDeposit;
+                tenant.MaintenanceCharges = request.MaintenanceCharges;
+                tenant.TenancyStartDate = request.TenancyStartDate;
+                tenant.TenancyEndDate = request.TenancyEndDate;
+                tenant.RentDueDate = request.RentDueDate;
+                tenant.LeaseDuration = request.LeaseDuration > 0 ? request.LeaseDuration : DEFAULT_LEASE_DURATION;
+                tenant.NoticePeriod = request.NoticePeriod > 0 ? request.NoticePeriod : DEFAULT_NOTICE_PERIOD;
+                tenant.LandlordId = request.LandlordId;
+            }
+        }
+
+        /// <summary>
+        /// Filters tenants by age requirement for onboarding eligibility
+        /// </summary>
+        /// <param name="tenants">The tenants to filter</param>
+        /// <returns>Tenants who meet the minimum age requirement</returns>
+        private List<Tenant> FilterTenantsByAge(List<Tenant> tenants)
+        {
+            if (tenants == null) return new List<Tenant>();
+
+            var today = DateTime.Today;
+            var cutoffDate = today.AddYears(-MINIMUM_AGE_FOR_ONBOARDING);
+
+            return tenants.Where(t => t.DOB.HasValue && t.DOB.Value <= cutoffDate).ToList();
+        }
+
+        /// <summary>
+        /// Filters tenants who have valid email addresses and are active
+        /// </summary>
+        /// <param name="tenants">The tenants to filter</param>
+        /// <returns>Tenants with valid emails who are active</returns>
+        private List<Tenant> FilterTenantsWithValidEmails(List<Tenant> tenants)
+        {
+            if (tenants == null) return new List<Tenant>();
+
+            return tenants.Where(t => !string.IsNullOrEmpty(t.Email) &&
+                                     t.IsActive.HasValue && t.IsActive.Value).ToList();
+        }
+
+        /// <summary>
+        /// Checks if the primary tenant in a group has accepted the agreement
+        /// </summary>
+        /// <param name="tenantGroup">The tenant group identifier</param>
+        /// <returns>True if primary tenant has accepted agreement</returns>
+        private async Task<bool> IsPrimaryTenantAgreementAccepted(string tenantGroup)
+        {
+            if (string.IsNullOrEmpty(tenantGroup)) return false;
+
+            return await _context.Tenant
+                .AnyAsync(t => t.TenantGroup == tenantGroup &&
+                              t.IsPrimary.HasValue && t.IsPrimary.Value &&
+                              t.AgreementAccepted.HasValue && t.AgreementAccepted.Value);
+        }
+
+        /// <summary>
+        /// Centralized logging method for consistent error logging
+        /// </summary>
+        private void LogError(string operation, Exception ex, object? context = null)
+        {
+            var contextInfo = context != null ? $" Context: {System.Text.Json.JsonSerializer.Serialize(context)}" : "";
+            Console.WriteLine($"[TenantService] {operation} failed: {ex.Message}{contextInfo}");
+        }
+
+        /// <summary>
+        /// Centralized logging method for informational messages
+        /// </summary>
+        private void LogInfo(string message)
+        {
+            Console.WriteLine($"[TenantService] {message}");
+        }
+        private Task<TenantDto> MapToDto(Tenant tenant)
+        {
+            var dto = new TenantDto
             {
                 Id = tenant.Id,
                 LandlordId = tenant.LandlordId,
@@ -1326,6 +1665,8 @@
                     IsVerified = d.IsVerified
                 }).ToList()
             };
+
+            return Task.FromResult(dto);
         }
 
         private Tenant MapToEntity(TenantDto dto, TenantCreateRequestDto request)
@@ -1363,7 +1704,7 @@
                 AgreementSigned = false,
 
                 // Relationship and Email preferences
-                Relationship = dto.Relationship ?? "Adult", // Default to Adult if not specified
+                Relationship = dto.Relationship ?? DEFAULT_RELATIONSHIP, // Default to Adult if not specified
                 IncludeInEmail = dto.IncludeInEmail ?? true // Default to true if not specified
             };
         }
@@ -1426,7 +1767,7 @@
                 AgreementSigned = false,
 
                 // Relationship and Email preferences
-                Relationship = dto.Relationship ?? "Adult", // Default to Adult if not specified
+                Relationship = dto.Relationship ?? DEFAULT_RELATIONSHIP, // Default to Adult if not specified
                 IncludeInEmail = dto.IncludeInEmail ?? true // Default to true if not specified
             }).ToList();
         }
@@ -1488,6 +1829,9 @@
                 var savedDocs = new List<Document>();
                 foreach (var doc in request.Documents.Where(d => d.File != null && d.File.Length > 0))
                 {
+                    if (doc.File == null || doc.OwnerType == null || !doc.OwnerId.HasValue || !doc.Category.HasValue)
+                        continue;
+
                     var fileUrl = await SaveFileAsync(doc.File, doc.OwnerType, doc.OwnerId.Value, doc.Category.Value);
                     savedDocs.Add(new Document
                     {
@@ -1580,7 +1924,7 @@
 
         private bool IsValidAadhaar(string aadhaar)
         {
-            var aadhaarRegex = new Regex(@"^[0-9]{12}$");
+            var aadhaarRegex = new Regex($@"^[0-9]{{{AADHAAR_NUMBER_LENGTH}}}$");
             return aadhaarRegex.IsMatch(aadhaar.Replace(" ", ""));
         }
 
@@ -1591,6 +1935,49 @@
         }
 
         #region Onboarding Email Helper Methods
+
+        /// <summary>
+        /// Sends onboarding email to a single tenant
+        /// </summary>
+        private async Task<bool> SendOnboardingEmailToTenant(Tenant tenant)
+        {
+            try
+            {
+                // Create password reset URL for tenant
+                var confirmationUrl = $"{_serverSettings.BaseUrl}/Account/ResetPasswordTenant?email={HttpUtility.UrlEncode(tenant.Email ?? string.Empty)}";
+
+                // Create attachments list (property documents)
+                var attachmentsList = CreateAttachmentsList(tenant);
+
+                // Create email request
+                var mailObj = new MailRequestDto()
+                {
+                    ToEmail = tenant.Email ?? string.Empty,
+                    Subject = "Welcome to RentConnect - Complete Your Onboarding",
+                    Body = await CreateOnboardingEmailBodyAsync(tenant.Name ?? "Tenant", confirmationUrl, tenant),
+                    Attachments = attachmentsList
+                };
+
+                // Send email
+                var emailResult = await _mailService.SendEmailAsync(mailObj);
+
+                if (emailResult.Status == ResultStatusType.Success)
+                {
+                    // Update tenant onboarding status
+                    tenant.OnboardingEmailSent = true;
+                    tenant.OnboardingEmailDate = DateTime.UtcNow;
+                    tenant.DateModified = DateTime.UtcNow;
+                    return true;
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                LogError($"SendOnboardingEmailToTenant {tenant.Id}", ex);
+                return false;
+            }
+        }
 
         private List<AttachmentsDto> CreateAttachmentsList(Tenant tenant)
         {
@@ -1604,7 +1991,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error creating attachments for tenant {tenant.Id}: {ex.Message}");
+                LogError($"CreateAttachmentsList for tenant {tenant.Id}", ex);
             }
 
             return attachments;
@@ -1725,21 +2112,21 @@
                     if (userId > 0)
                     {
                         createdUsers[tenant.Email ?? string.Empty] = userId;
-                        Console.WriteLine($"✅ Created AspNetUser for tenant: {tenant.Email} with Tenant role (ID: {userId})");
+                        LogInfo($"✅ Created AspNetUser for tenant: {tenant.Email} with Tenant role (ID: {userId})");
                     }
                     else if (userId == -1)
                     {
                         // User already exists - this is acceptable for tenant updates
-                        Console.WriteLine($"ℹ️ AspNetUser already exists for tenant: {tenant.Email}");
+                        LogInfo($"ℹ️ AspNetUser already exists for tenant: {tenant.Email}");
                     }
                     else
                     {
-                        Console.WriteLine($"❌ Failed to create AspNetUser for tenant: {tenant.Email}");
+                        LogInfo($"❌ Failed to create AspNetUser for tenant: {tenant.Email}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"❌ Exception creating AspNetUser for tenant {tenant.Email}: {ex.Message}");
+                    LogError($"CreateTenantUser for {tenant.Email}", ex);
                 }
             }
 
@@ -1774,7 +2161,7 @@
                     new ApplicationUserRoleDto
                     {
                         Id = ApplicationUserRole.Tenant,
-                        Name = "Tenant"
+                        Name = TENANT_ROLE_NAME
                     }
                 },
                 // Generate a temporary password that tenant must change
@@ -1791,7 +2178,7 @@
             // Generate a secure temporary password
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
             var random = new Random();
-            return new string(Enumerable.Repeat(chars, 12)
+            return new string(Enumerable.Repeat(chars, TEMPORARY_PASSWORD_LENGTH)
                 .Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
@@ -1826,7 +2213,7 @@
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Failed to update user for tenant {tenant.Email}: {ex.Message}");
+                    LogError($"UpdateTenantUser for {tenant.Email}", ex);
                 }
             }
 
@@ -1868,7 +2255,9 @@
             entity.Email = dto.Email;
         }
 
-      
+
+        #endregion
+
         #endregion
 
         #endregion
