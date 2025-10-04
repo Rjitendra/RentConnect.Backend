@@ -13,6 +13,8 @@
     using RentConnect.Services.Utility;
     using System.Text.RegularExpressions;
     using System.Web;
+    using RentConnect.Models.Entities.Documents;
+
     public class TenantService : ITenantService
     {
         private readonly ApiContext _context;
@@ -198,6 +200,7 @@
                     if (tenantDto.Documents?.Any() == true)
                     {
                         var docDtos = await SaveTenantDocuments(tenant.Id, tenantDto.Documents, DocumentUploadContext.TenantCreation);
+                      
                     }
                     var docs = this._context.Document.Where(x => x.LandlordId == tenantDto.LandlordId && x.PropertyId == tenantDto.PropertyId && x.TenantId == tenantDto.Id && x.UploadContext == DocumentUploadContext.TenantCreation).ToList();
                     tenant.Documents = docs;
@@ -206,21 +209,6 @@
                     createdTenants.Add(createdDto);
                 }
 
-                // try
-                //{
-                //    var hasIncludeEmails = updatedTenants.Where(t => t.Email != null).ToList();
-                //    var updatedUserIds = await UpdateTenantUsers(hasIncludeEmails);
-                //    // Log successful user updates
-                //    foreach (var userUpdate in updatedUserIds)
-                //    {
-                //        Console.WriteLine($"Updated AspNetUser for tenant {userUpdate.Key} with ID: {userUpdate.Value}");
-                //    }
-                //}
-                //catch (Exception ex)
-                //{
-                //    // Log error but don't fail the entire tenant update
-                //    Console.WriteLine($"Warning: Failed to update some AspNetUsers records: {ex.Message}");
-                //}
 
                 var existingProperty = await _context.Property
                    .FirstOrDefaultAsync(p => p.Id == request.PropertyId);
@@ -336,24 +324,7 @@
                     updatedTenants.Add(updatedDto);
                 }
 
-                // Update AspNetUsers records for all updated tenants
-                //try
-                //{
-                //    var hasIncludeEmails = updatedTenants.Where(t => t.Email != null).ToList();
-                //    var updatedUserIds = await UpdateTenantUsers(hasIncludeEmails);
-                //    // Log successful user updates
-                //    foreach (var userUpdate in updatedUserIds)
-                //    {
-                //        Console.WriteLine($"Updated AspNetUser for tenant {userUpdate.Key} with ID: {userUpdate.Value}");
-                //    }
-                //}
-                //catch (Exception ex)
-                //{
-                //    // Log error but don't fail the entire tenant update
-                //    Console.WriteLine($"Warning: Failed to update some AspNetUsers records: {ex.Message}");
-                //}
-
-                // Update property metadata
+                 // Update property metadata
                 var existingProperty = await _context.Property
                     .FirstOrDefaultAsync(p => p.Id == request.PropertyId);
 
@@ -911,7 +882,7 @@
                 };
 
                 // Use your existing document service
-                var uploadResult = await _documentService.UploadDocuments(documentUploadRequest);
+                var uploadResult = await UploadDocuments(documentUploadRequest);
 
                 if (uploadResult.Status == ResultStatusType.Success)
                 {
@@ -1499,7 +1470,7 @@
                 };
 
                 // Delegate to document service
-                return await _documentService.UploadDocuments(documentUploadRequest);
+                return await UploadDocuments(documentUploadRequest);
             }
             catch (Exception ex)
             {
@@ -1507,8 +1478,86 @@
             }
         }
 
+        private async Task<Result<IEnumerable<DocumentDto>>> UploadDocuments(DocumentUploadRequestDto request)
+        {
+            try
+            {
+                if (request.Documents == null || !request.Documents.Any())
+                    return Result<IEnumerable<DocumentDto>>.Failure("Documents not found");
 
+                var savedDocs = new List<Document>();
+                foreach (var doc in request.Documents.Where(d => d.File != null && d.File.Length > 0))
+                {
+                    var fileUrl = await SaveFileAsync(doc.File, doc.OwnerType, doc.OwnerId.Value, doc.Category.Value);
+                    savedDocs.Add(new Document
+                    {
+                        OwnerId = doc.OwnerId,
+                        OwnerType = doc.OwnerType,
+                        PropertyId = doc.PropertyId,
+                        LandlordId = doc.LandlordId,
+                        TenantId = doc.TenantId,
+                        Category = doc.Category,
+                        Url = fileUrl,
+                        Name = doc.File.FileName,
+                        Size = doc.File.Length,
+                        Type = doc.File.ContentType,
+                        Description = doc.Description,
+                        UploadedOn = DateTime.UtcNow.ToString("o"),
+                        IsVerified = true,
+                        DocumentIdentifier = null,
+                        UploadContext = doc.UploadContext
+                    });
+                }
 
+                if (!savedDocs.Any())
+                    return Result<IEnumerable<DocumentDto>>.Failure("No valid files to upload");
+
+                await _context.Document.AddRangeAsync(savedDocs);
+                await _context.SaveChangesAsync();
+                // Map Document -> DocumentDto
+                var docsDto = savedDocs.Select(d => new DocumentDto
+                {
+                    Id = d.Id,
+                    OwnerId = d.OwnerId,
+                    OwnerType = d.OwnerType,
+                    PropertyId = d.PropertyId,
+                    LandlordId = d.LandlordId,
+                    TenantId = d.TenantId,
+                    Category = d.Category,
+                    Url = d.Url,
+                    Name = d.Name,
+                    Size = d.Size,
+                    Type = d.Type,
+                    Description = d.Description,
+                    UploadedOn = d.UploadedOn,
+                    IsVerified = d.IsVerified,
+                    DocumentIdentifier = d.DocumentIdentifier
+                }).ToList();
+                return Result<IEnumerable<DocumentDto>>.Success(docsDto);
+            }
+            catch (Exception ex)
+            {
+                return Result<IEnumerable<DocumentDto>>.Failure($"Upload failed: {ex.Message}");
+            }
+        }
+
+        private async Task<string> SaveFileAsync(IFormFile file, string ownerType, long ownerId, DocumentCategory category)
+        {
+            // Get the enum name as string
+            var categoryType = category.ToString(); // "IdProof", "Other", etc.
+            var uploadPath = Path.Combine("wwwroot/uploads", ownerType, ownerId.ToString(), categoryType);
+            Directory.CreateDirectory(uploadPath);
+
+            var fileName = $"{Guid.NewGuid()}_{file.FileName}";
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            return $"/uploads/{ownerType}/{ownerId}/{categoryType}/{fileName}";
+        }
 
         private bool IsValidEmail(string email)
         {
@@ -1819,6 +1868,7 @@
             entity.Email = dto.Email;
         }
 
+      
         #endregion
 
         #endregion
