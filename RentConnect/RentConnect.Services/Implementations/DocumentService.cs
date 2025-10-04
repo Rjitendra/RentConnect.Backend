@@ -44,7 +44,8 @@
                         Description = doc.Description,
                         UploadedOn = DateTime.UtcNow.ToString("o"),
                         IsVerified = true,
-                        DocumentIdentifier = null
+                        DocumentIdentifier = null,
+                        UploadContext=doc.UploadContext
                     });
                 }
 

@@ -49,6 +49,8 @@
                 var tenantDtos = new List<TenantDto>();
                 foreach (var tenant in tenants)
                 {
+                    var docs = this._context.Document.Where(x => x.LandlordId == tenant.LandlordId && x.PropertyId == tenant.PropertyId && x.TenantId == tenant.Id && x.UploadContext == DocumentUploadContext.TenantCreation).ToList();
+                    tenant.Documents = docs;
                     var dto = await MapToDto(tenant);
                     tenantDtos.Add(dto);
                 }
@@ -72,6 +74,8 @@
 
                 if (tenant == null)
                     return Result<TenantDto>.NotFound();
+                var docs = this._context.Document.Where(x => x.LandlordId == tenant.LandlordId && x.PropertyId == tenant.PropertyId && x.TenantId == tenant.Id && x.UploadContext == DocumentUploadContext.TenantCreation).ToList();
+                tenant.Documents = docs;
 
                 var tenantDto = await MapToDto(tenant);
                 return Result<TenantDto>.Success(tenantDto);
@@ -95,6 +99,8 @@
                 var tenantDtos = new List<TenantDto>();
                 foreach (var tenant in tenants)
                 {
+                    var docs = this._context.Document.Where(x => x.LandlordId == tenant.LandlordId && x.PropertyId == tenant.PropertyId && x.TenantId == tenant.Id && x.UploadContext == DocumentUploadContext.TenantCreation).ToList();
+                    tenant.Documents = docs;
                     var dto = await MapToDto(tenant);
                     tenantDtos.Add(dto);
                 }
@@ -120,6 +126,8 @@
                 var tenantDtos = new List<TenantDto>();
                 foreach (var tenant in tenants)
                 {
+                    var docs = this._context.Document.Where(x => x.LandlordId == tenant.LandlordId && x.PropertyId == tenant.PropertyId && x.TenantId == tenant.Id && x.UploadContext == DocumentUploadContext.TenantCreation).ToList();
+                    tenant.Documents = docs;
                     var dto = await MapToDto(tenant);
                     tenantDtos.Add(dto);
                 }
@@ -152,7 +160,7 @@
                 }
 
                 // Validate the request
-                var validationErrors = ValidateTenantGroup(request.Tenants,true);
+                var validationErrors = ValidateTenantGroup(request.Tenants, true);
                 if (validationErrors.Any())
                 {
                     return Result<TenantSaveResponseDto>.Failure(new TenantSaveResponseDto
@@ -191,7 +199,8 @@
                     {
                         var docDtos = await SaveTenantDocuments(tenant.Id, tenantDto.Documents, DocumentUploadContext.TenantCreation);
                     }
-
+                    var docs = this._context.Document.Where(x => x.LandlordId == tenantDto.LandlordId && x.PropertyId == tenantDto.PropertyId && x.TenantId == tenantDto.Id && x.UploadContext == DocumentUploadContext.TenantCreation).ToList();
+                    tenant.Documents = docs;
                     // Map back to DTO for response
                     var createdDto = await MapToDto(tenant);
                     createdTenants.Add(createdDto);
@@ -320,7 +329,8 @@
                     {
                         await SaveTenantDocuments(existingTenant.Id, tenantDto.Documents, DocumentUploadContext.TenantCreation);
                     }
-
+                    var docs = this._context.Document.Where(x => x.LandlordId == tenantDto.LandlordId && x.PropertyId == tenantDto.PropertyId && x.TenantId == tenantDto.Id && x.UploadContext == DocumentUploadContext.TenantCreation).ToList();
+                    existingTenant.Documents = docs;
                     // Map updated DTO
                     var updatedDto = await MapToDto(existingTenant);
                     updatedTenants.Add(updatedDto);
@@ -1015,7 +1025,7 @@
             return errors;
         }
 
-        public List<ValidationErrorDto> ValidateTenantGroup(List<TenantDto> tenants, bool isSingleTenant = false,bool isCreate=false)
+        public List<ValidationErrorDto> ValidateTenantGroup(List<TenantDto> tenants, bool isSingleTenant = false, bool isCreate = false)
         {
             var errors = new List<ValidationErrorDto>();
 
@@ -1251,11 +1261,7 @@
 
         private async Task<TenantDto> MapToDto(Tenant tenant)
         {
-            // Get documents for this tenant using your existing document service
-            var documentsResult = await _documentService.GetDocumentsByOwner(tenant.Id, "Landlord");
-            var documents = documentsResult.IsSuccess ? documentsResult.Entity.Where(x => x.UploadContext == DocumentUploadContext.TenantCreation).ToList() : new List<DocumentDto>();
-
-
+          
             return new TenantDto
             {
                 Id = tenant.Id,
@@ -1331,7 +1337,7 @@
 
 
                 PropertyName = tenant.Property != null ? $"{tenant.Property.Title} - {tenant.Property.Locality}, {tenant.Property.City}" : "",
-                Documents = documents.Select(d => new DocumentDto
+                Documents = tenant.Documents.Select(d => new DocumentDto
                 {
                     Id = d.Id,
                     OwnerId = d.OwnerId,
@@ -1476,7 +1482,7 @@
                 // Set tenant-specific metadata
                 foreach (var doc in documentsWithFiles)
                 {
-                    doc.OwnerId = tenantId;
+                    doc.OwnerId = tenant.LandlordId;
                     doc.OwnerType = "Landlord";
                     doc.TenantId = tenantId;
                     doc.LandlordId = tenant.LandlordId;
