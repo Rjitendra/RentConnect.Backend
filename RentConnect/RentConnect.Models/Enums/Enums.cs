@@ -92,4 +92,13 @@
         Landlord,
         Tenant
     }
+
+    public enum DocumentUploadContext
+    {
+        None = 0,
+        TenantCreation = 1,
+        LandlordOnboarding = 2,
+        PropertyRegistration = 3
+    }
+
 }

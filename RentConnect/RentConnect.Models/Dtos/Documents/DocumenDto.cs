@@ -11,7 +11,7 @@
         public long? OwnerId { get; set; }
         public string? OwnerType { get; set; }
         public DocumentCategory? Category { get; set; }
-
+        public DocumentUploadContext? UploadContext { get; set; } = DocumentUploadContext.None;
         public long? LandlordId { get; set; }
         public long? PropertyId { get; set; }
 

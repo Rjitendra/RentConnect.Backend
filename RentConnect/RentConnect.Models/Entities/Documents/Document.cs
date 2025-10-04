@@ -10,6 +10,8 @@
 
         public string? OwnerType { get; set; } // "Landlord" or "Tenant"
 
+        public DocumentUploadContext? UploadContext { get; set; } = DocumentUploadContext.None;
+
         public long? LandlordId { get; set; } = -1;
         public long? PropertyId { get; set; } = -1;
 
@@ -31,4 +33,6 @@
 
 
     }
+
+   
 }

@@ -70,7 +70,8 @@
                     .Include(t => t.Landlord)
                     .FirstOrDefaultAsync(t => t.Id == id);
 
-                if (tenant == null) return Result<TenantDto>.NotFound();
+                if (tenant == null)
+                    return Result<TenantDto>.NotFound();
 
                 var tenantDto = await MapToDto(tenant);
                 return Result<TenantDto>.Success(tenantDto);
@@ -151,7 +152,7 @@
                 }
 
                 // Validate the request
-                var validationErrors = ValidateTenantGroup(request.Tenants);
+                var validationErrors = ValidateTenantGroup(request.Tenants,true);
                 if (validationErrors.Any())
                 {
                     return Result<TenantSaveResponseDto>.Failure(new TenantSaveResponseDto
@@ -188,7 +189,7 @@
                     // Handle document uploads
                     if (tenantDto.Documents?.Any() == true)
                     {
-                        await SaveTenantDocuments(tenant.Id, tenantDto.Documents);
+                        var docDtos = await SaveTenantDocuments(tenant.Id, tenantDto.Documents, DocumentUploadContext.TenantCreation);
                     }
 
                     // Map back to DTO for response
@@ -196,7 +197,21 @@
                     createdTenants.Add(createdDto);
                 }
 
-
+                // try
+                //{
+                //    var hasIncludeEmails = updatedTenants.Where(t => t.Email != null).ToList();
+                //    var updatedUserIds = await UpdateTenantUsers(hasIncludeEmails);
+                //    // Log successful user updates
+                //    foreach (var userUpdate in updatedUserIds)
+                //    {
+                //        Console.WriteLine($"Updated AspNetUser for tenant {userUpdate.Key} with ID: {userUpdate.Value}");
+                //    }
+                //}
+                //catch (Exception ex)
+                //{
+                //    // Log error but don't fail the entire tenant update
+                //    Console.WriteLine($"Warning: Failed to update some AspNetUsers records: {ex.Message}");
+                //}
 
                 var existingProperty = await _context.Property
                    .FirstOrDefaultAsync(p => p.Id == request.PropertyId);
@@ -303,7 +318,7 @@
                     // Handle document updates
                     if (tenantDto.Documents?.Any() == true)
                     {
-                        await SaveTenantDocuments(existingTenant.Id, tenantDto.Documents);
+                        await SaveTenantDocuments(existingTenant.Id, tenantDto.Documents, DocumentUploadContext.TenantCreation);
                     }
 
                     // Map updated DTO
@@ -312,21 +327,21 @@
                 }
 
                 // Update AspNetUsers records for all updated tenants
-                try
-                {
-                    var updatedUserIds = await UpdateTenantUsers(updatedTenants);
-
-                    // Log successful user updates
-                    foreach (var userUpdate in updatedUserIds)
-                    {
-                        Console.WriteLine($"Updated AspNetUser for tenant {userUpdate.Key} with ID: {userUpdate.Value}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // Log error but don't fail the entire tenant update
-                    Console.WriteLine($"Warning: Failed to update some AspNetUsers records: {ex.Message}");
-                }
+                //try
+                //{
+                //    var hasIncludeEmails = updatedTenants.Where(t => t.Email != null).ToList();
+                //    var updatedUserIds = await UpdateTenantUsers(hasIncludeEmails);
+                //    // Log successful user updates
+                //    foreach (var userUpdate in updatedUserIds)
+                //    {
+                //        Console.WriteLine($"Updated AspNetUser for tenant {userUpdate.Key} with ID: {userUpdate.Value}");
+                //    }
+                //}
+                //catch (Exception ex)
+                //{
+                //    // Log error but don't fail the entire tenant update
+                //    Console.WriteLine($"Warning: Failed to update some AspNetUsers records: {ex.Message}");
+                //}
 
                 // Update property metadata
                 var existingProperty = await _context.Property
@@ -951,53 +966,62 @@
 
 
 
-        public List<TenantValidationErrorDto> ValidateTenant(TenantDto tenant)
+        public List<ValidationErrorDto> ValidateTenant(TenantDto tenant, bool create = false)
         {
-            var errors = new List<TenantValidationErrorDto>();
+            var errors = new List<ValidationErrorDto>();
 
             if (string.IsNullOrWhiteSpace(tenant.Name) || tenant.Name.Length < 2)
-                errors.Add(new TenantValidationErrorDto { Field = "name", Message = "Name must be at least 2 characters long" });
+                errors.Add(new ValidationErrorDto { Field = "name", Message = "Name must be at least 2 characters long" });
+            if (create == true)
+            {
+                var email = this._context.Tenant.Where(x => x.Email == tenant.Email.Trim()).ToList();
+                if (email.Any())
+                {
+                    errors.Add(new ValidationErrorDto { Field = "email", Message = "Emails already used" });
+                }
+
+            }
 
             if (string.IsNullOrWhiteSpace(tenant.Email))
-                errors.Add(new TenantValidationErrorDto { Field = "email", Message = "Valid email address is required" });
+                errors.Add(new ValidationErrorDto { Field = "email", Message = "Valid email address is required" });
 
             if (string.IsNullOrWhiteSpace(tenant.PhoneNumber))
-                errors.Add(new TenantValidationErrorDto { Field = "phoneNumber", Message = "Valid phone number is required" });
+                errors.Add(new ValidationErrorDto { Field = "phoneNumber", Message = "Valid phone number is required" });
 
             if (tenant.DOB == default)
-                errors.Add(new TenantValidationErrorDto { Field = "dob", Message = "Date of birth is required" });
+                errors.Add(new ValidationErrorDto { Field = "dob", Message = "Date of birth is required" });
 
             if (string.IsNullOrWhiteSpace(tenant.Occupation) || tenant.Occupation.Length < 2)
-                errors.Add(new TenantValidationErrorDto { Field = "occupation", Message = "Occupation is required" });
+                errors.Add(new ValidationErrorDto { Field = "occupation", Message = "Occupation is required" });
 
-            //if (string.IsNullOrWhiteSpace(tenant.AadhaarNumber) || !IsValidAadhaar(tenant.AadhaarNumber))
-            //    errors.Add(new TenantValidationErrorDto { Field = "aadhaarNumber", Message = "Valid 12-digit Aadhaar number is required" });
+            if (string.IsNullOrWhiteSpace(tenant.AadhaarNumber) || !IsValidAadhaar(tenant.AadhaarNumber))
+                errors.Add(new ValidationErrorDto { Field = "aadhaarNumber", Message = "Valid 12-digit Aadhaar number is required" });
 
-            //if (string.IsNullOrWhiteSpace(tenant.PanNumber) || !IsValidPAN(tenant.PanNumber))
-            //    errors.Add(new TenantValidationErrorDto { Field = "PanNumber", Message = "Valid PAN number is required (e.g., ABCDE1234F)" });
+            if (string.IsNullOrWhiteSpace(tenant.PanNumber) || !IsValidPAN(tenant.PanNumber))
+                errors.Add(new ValidationErrorDto { Field = "PanNumber", Message = "Valid PAN number is required (e.g., ABCDE1234F)" });
 
             if (tenant.PropertyId <= 0)
-                errors.Add(new TenantValidationErrorDto { Field = "propertyId", Message = "Property selection is required" });
+                errors.Add(new ValidationErrorDto { Field = "propertyId", Message = "Property selection is required" });
 
             if (tenant.RentAmount <= 0)
-                errors.Add(new TenantValidationErrorDto { Field = "rentAmount", Message = "Valid rent amount is required" });
+                errors.Add(new ValidationErrorDto { Field = "rentAmount", Message = "Valid rent amount is required" });
 
             if (tenant.TenancyStartDate == default)
-                errors.Add(new TenantValidationErrorDto { Field = "tenancyStartDate", Message = "Tenancy start date is required" });
+                errors.Add(new ValidationErrorDto { Field = "tenancyStartDate", Message = "Tenancy start date is required" });
 
             if (tenant.RentDueDate == default)
-                errors.Add(new TenantValidationErrorDto { Field = "rentDueDate", Message = "Rent due date is required" });
+                errors.Add(new ValidationErrorDto { Field = "rentDueDate", Message = "Rent due date is required" });
 
             return errors;
         }
 
-        public List<TenantValidationErrorDto> ValidateTenantGroup(List<TenantDto> tenants, bool isSingleTenant = false)
+        public List<ValidationErrorDto> ValidateTenantGroup(List<TenantDto> tenants, bool isSingleTenant = false,bool isCreate=false)
         {
-            var errors = new List<TenantValidationErrorDto>();
+            var errors = new List<ValidationErrorDto>();
 
             if (!tenants.Any())
             {
-                errors.Add(new TenantValidationErrorDto { Field = "tenants", Message = "At least one tenant is required" });
+                errors.Add(new ValidationErrorDto { Field = "tenants", Message = "At least one tenant is required" });
                 return errors;
             }
 
@@ -1006,14 +1030,14 @@
             {
                 var primaryCount = tenants.Count(t => t.IsPrimary == true);
                 if (primaryCount == 0)
-                    errors.Add(new TenantValidationErrorDto { Field = "tenants", Message = "One tenant must be marked as primary" });
+                    errors.Add(new ValidationErrorDto { Field = "tenants", Message = "One tenant must be marked as primary" });
                 else if (primaryCount > 1)
-                    errors.Add(new TenantValidationErrorDto { Field = "tenants", Message = "Only one tenant can be marked as primary" });
+                    errors.Add(new ValidationErrorDto { Field = "tenants", Message = "Only one tenant can be marked as primary" });
             }
             // Validate each tenant
             for (int i = 0; i < tenants.Count; i++)
             {
-                var tenantErrors = ValidateTenant(tenants[i]);
+                var tenantErrors = ValidateTenant(tenants[i], isCreate);
                 foreach (var error in tenantErrors)
                 {
                     error.Field = $"tenants[{i}].{error.Field}";
@@ -1026,7 +1050,7 @@
             var duplicateEmails = emails.GroupBy(e => e).Where(g => g.Count() > 1).Select(g => g.Key);
             foreach (var email in duplicateEmails)
             {
-                errors.Add(new TenantValidationErrorDto { Field = "email", Message = $"Duplicate email address: {email}" });
+                errors.Add(new ValidationErrorDto { Field = "email", Message = $"Duplicate email address: {email}" });
             }
 
             // Check for duplicate phone numbers
@@ -1228,8 +1252,8 @@
         private async Task<TenantDto> MapToDto(Tenant tenant)
         {
             // Get documents for this tenant using your existing document service
-            var documentsResult = await _documentService.GetDocumentsByOwner(tenant.Id, "Tenant");
-            var documents = documentsResult.IsSuccess ? documentsResult.Entity : new List<DocumentDto>();
+            var documentsResult = await _documentService.GetDocumentsByOwner(tenant.Id, "Landlord");
+            var documents = documentsResult.IsSuccess ? documentsResult.Entity.Where(x => x.UploadContext == DocumentUploadContext.TenantCreation).ToList() : new List<DocumentDto>();
 
 
             return new TenantDto
@@ -1430,26 +1454,35 @@
             }).ToList();
         }
 
-        private async Task SaveTenantDocuments(long tenantId, List<DocumentDto> documents)
+        private async Task<Result<IEnumerable<DocumentDto>>> SaveTenantDocuments(long tenantId, List<DocumentDto> documents, DocumentUploadContext uploadContext = DocumentUploadContext.None)
         {
-            if (!documents.Any()) return;
-
-            var tenant = await _context.Tenant.FindAsync(tenantId);
-            if (tenant == null) return;
-
-            // Convert to your existing document upload structure
-            var documentsWithFiles = documents.Where(d => d.File != null).ToList();
-
-            if (documentsWithFiles.Any())
+            try
             {
-                // Set additional tenant-specific information
+                if (documents == null || !documents.Any())
+                    return Result<IEnumerable<DocumentDto>>.Success(Enumerable.Empty<DocumentDto>());
+
+                var tenant = await _context.Tenant.FindAsync(tenantId);
+                if (tenant == null)
+                    return Result<IEnumerable<DocumentDto>>.Failure("Tenant not found.");
+
+                // Select only new documents with files
+                var documentsWithFiles = documents
+                    .Where(d => d.File != null && d.Id == null)
+                    .ToList();
+
+                if (!documentsWithFiles.Any())
+                    return Result<IEnumerable<DocumentDto>>.Success(Enumerable.Empty<DocumentDto>());
+
+                // Set tenant-specific metadata
                 foreach (var doc in documentsWithFiles)
                 {
                     doc.OwnerId = tenantId;
-                    doc.OwnerType = "Tenant";
+                    doc.OwnerType = "Landlord";
                     doc.TenantId = tenantId;
                     doc.LandlordId = tenant.LandlordId;
                     doc.PropertyId = tenant.PropertyId;
+                    doc.UploadContext = uploadContext;
+
                     if (string.IsNullOrEmpty(doc.Description))
                         doc.Description = $"Tenant document - {doc.Category}";
                 }
@@ -1459,10 +1492,15 @@
                     Documents = documentsWithFiles
                 };
 
-                // Use your existing document service
-                await _documentService.UploadDocuments(documentUploadRequest);
+                // Delegate to document service
+                return await _documentService.UploadDocuments(documentUploadRequest);
+            }
+            catch (Exception ex)
+            {
+                return Result<IEnumerable<DocumentDto>>.Failure($"Failed to save tenant documents: {ex.Message}");
             }
         }
+
 
 
 

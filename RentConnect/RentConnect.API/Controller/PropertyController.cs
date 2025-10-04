@@ -419,14 +419,16 @@ namespace RentConnect.API.Controller
                     return BadRequest("Property does not belong to the specified landlord");
 
                 // Get property images
-                var imagesResult = await _documentService.GetPropertyImages(landlordId, propertyId);
+                var imagesResult = await _documentService.GetPropertyImages(landlordId, propertyId,null);
                 if (!imagesResult.IsSuccess)
                     return ProcessResult(imagesResult);
+
+               
 
                 // Convert relative paths to full URLs that can be accessed
                 var baseUrl = $"{Request.Scheme}://{Request.Host}";
 
-                var imageList = imagesResult.Entity.Select(img =>
+                var imageList = imagesResult.Entity.Where(d => d.OwnerType == "Landlord").Select(img =>
                 {
                     img.Url = $"{baseUrl}{img.Url}"; // For Angular display
                     img.DownloadUrl = null;

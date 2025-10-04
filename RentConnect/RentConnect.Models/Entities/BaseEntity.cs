@@ -10,8 +10,11 @@
         public long Id { get; set; }
 
         public Guid PkId { get; set; } = Guid.NewGuid();
-        public string? UpdatedBy { get; set; } = "Jitendra";
-        public DateTime UpdatedDate { get; set; } = DateTime.UtcNow;
+        public string? UpdatedBy { get; set; } = String.Empty;
+        public DateTime? UpdatedDate { get; set; } = DateTime.UtcNow;
+
+        public string? AddedBy { get; set; } = String.Empty;
+        public DateTime? AddedDate { get; set; } = DateTime.UtcNow;
         public bool IsValid { get; set; } = true;
         public bool IsVisible { get; set; } = true;
         public bool IsDeleted { get; set; } = false;

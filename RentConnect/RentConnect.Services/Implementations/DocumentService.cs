@@ -4,7 +4,6 @@
     using Microsoft.EntityFrameworkCore;
     using RentConnect.Models.Context;
     using RentConnect.Models.Dtos.Document;
-    using RentConnect.Models.Dtos.Properties;
     using RentConnect.Models.Entities.Documents;
     using RentConnect.Models.Enums;
     using RentConnect.Services.Interfaces;
@@ -43,8 +42,8 @@
                         Size = doc.File.Length,
                         Type = doc.File.ContentType,
                         Description = doc.Description,
-                        UploadedOn = DateTime.UtcNow.ToString("o"), 
-                        IsVerified = true, 
+                        UploadedOn = DateTime.UtcNow.ToString("o"),
+                        IsVerified = true,
                         DocumentIdentifier = null
                     });
                 }
@@ -178,15 +177,21 @@
             }
         }
 
-        public async Task<Result<IEnumerable<DocumentDto>>> GetPropertyImages(long landlordId, long propertyId)
+        public async Task<Result<IEnumerable<DocumentDto>>> GetPropertyImages(long? landlordId, long propertyId, long? tenantId)
         {
             try
             {
-                var documents = await _context.Document
-                    .Where(d => d.LandlordId == landlordId &&
-                               d.PropertyId == propertyId &&
-                               d.Category == Models.Enums.DocumentCategory.PropertyImages)
-                    .ToListAsync();
+                var query = _context.Document.AsQueryable();
+
+                if (landlordId.HasValue)
+                    query = query.Where(d => d.LandlordId == landlordId);
+
+                if (tenantId.HasValue)
+                    query = query.Where(d => d.TenantId == tenantId);
+
+                query = query.Where(d => d.PropertyId == propertyId && d.Category == DocumentCategory.PropertyImages);
+
+                var documents = await query.ToListAsync();
 
                 var documentDtos = documents.Select(d => new DocumentDto
                 {
@@ -200,9 +205,12 @@
                     Size = d.Size,
                     Type = d.Type,
                     Description = d.Description,
-                    DocumentIdentifier = d.Id.ToString(),
+                    DocumentIdentifier = d.DocumentIdentifier,
                     UploadedOn = d.UploadedOn,
-                    IsVerified = d.IsVerified
+                    IsVerified = d.IsVerified,
+                    Id = d.Id,
+                    TenantId = d.TenantId,
+
                 }).ToList();
 
                 return Result<IEnumerable<DocumentDto>>.Success(documentDtos);

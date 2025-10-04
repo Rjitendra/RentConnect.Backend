@@ -1,6 +1,7 @@
 ﻿namespace RentConnect.Services.Interfaces
 {
     using Microsoft.AspNetCore.Http;
+    using RentConnect.Models.Dtos;
     using RentConnect.Models.Dtos.Tenants;
     using RentConnect.Models.Entities.Tenants;
     using RentConnect.Services.Utility;
@@ -34,7 +35,7 @@
         Task<Result<TenantStatisticsDto>> GetTenantStatistics(long landlordId);
 
         // Validation
-        List<TenantValidationErrorDto> ValidateTenant(TenantDto tenant);
-        List<TenantValidationErrorDto> ValidateTenantGroup(List<TenantDto> tenants, bool isSingleTenant);
+        List<ValidationErrorDto> ValidateTenant(TenantDto tenant, bool create = false);
+        List<ValidationErrorDto> ValidateTenantGroup(List<TenantDto> tenants, bool isSingleTenant,bool isCreate= false);
     }
 }
