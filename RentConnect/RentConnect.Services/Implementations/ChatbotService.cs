@@ -27,13 +27,19 @@ namespace RentConnect.Services.Implementations
         // Intent patterns for local processing
         private readonly Dictionary<string, List<string>> _intentPatterns = new()
         {
-            ["greeting"] = new() { "hello", "hi", "hey", "good morning", "good evening", "start" },
-            ["tenancy_info"] = new() { "rent", "tenancy", "lease", "agreement", "contract" },
-            ["property_info"] = new() { "property", "address", "location", "house", "apartment" },
-            ["payment_info"] = new() { "payment", "pay", "money", "due", "bill", "invoice" },
-            ["issue_creation"] = new() { "issue", "problem", "repair", "fix", "maintenance", "broken" },
-            ["help"] = new() { "help", "what can you do", "commands", "options" },
-            ["goodbye"] = new() { "bye", "goodbye", "see you", "exit", "quit" }
+            ["greeting"] = new() { "hello", "hi", "hey", "good morning", "good evening", "start", "hey there" },
+            ["tenancy_info"] = new() { "rent", "tenancy", "lease", "agreement", "contract", "rental" },
+            ["property_info"] = new() { "property", "address", "location", "house", "apartment", "home" },
+            ["payment_info"] = new() { "payment", "pay", "money", "due", "bill", "invoice", "paid", "pending" },
+            ["payment_history"] = new() { "payment history", "previous payments", "past payments", "transaction history" },
+            ["issue_view"] = new() { "my issues", "view issues", "show issues", "issue list", "tickets", "complaints" },
+            ["issue_creation"] = new() { "create issue", "report issue", "new issue", "problem", "repair", "fix", "maintenance", "broken" },
+            ["issue_status"] = new() { "issue status", "ticket status", "complaint status", "issue progress" },
+            ["document_info"] = new() { "documents", "my documents", "view documents", "papers", "files", "upload" },
+            ["landlord_info"] = new() { "landlord", "owner", "contact landlord", "landlord details" },
+            ["help"] = new() { "help", "what can you do", "commands", "options", "guide" },
+            ["navigation"] = new() { "go to", "navigate", "open", "show page", "take me to" },
+            ["goodbye"] = new() { "bye", "goodbye", "see you", "exit", "quit", "thanks" }
         };
 
         public ChatbotService(
@@ -171,8 +177,26 @@ namespace RentConnect.Services.Implementations
                     case "payment_info":
                         return await GeneratePaymentInfoResponse(context);
 
+                    case "payment_history":
+                        return await GeneratePaymentHistoryResponse(context);
+
+                    case "issue_view":
+                        return await GenerateIssueViewResponse(context);
+
                     case "issue_creation":
                         return GenerateIssueCreationResponse(context);
+
+                    case "issue_status":
+                        return await GenerateIssueStatusResponse(context);
+
+                    case "document_info":
+                        return await GenerateDocumentInfoResponse(context);
+
+                    case "landlord_info":
+                        return await GenerateLandlordInfoResponse(context);
+
+                    case "navigation":
+                        return await GenerateNavigationResponse(context, message);
 
                     case "help":
                         return GenerateHelpResponse(context);
@@ -281,7 +305,138 @@ namespace RentConnect.Services.Implementations
 
             return new ChatbotResponseDto
             {
-                Message = paymentInfo
+                Message = paymentInfo,
+                QuickReplies = new List<QuickReplyDto>
+                {
+                    new() { Id = "payment_history", Text = "Show payment history", Payload = "payment_history" },
+                    new() { Id = "property_info", Text = "View property details", Payload = "property_info" }
+                }
+            };
+        }
+
+        private async Task<ChatbotResponseDto> GeneratePaymentHistoryResponse(ChatbotContextDto context)
+        {
+            if (context.UserType != "tenant" || !context.TenantId.HasValue)
+            {
+                return new ChatbotResponseDto
+                {
+                    Message = "I can only provide payment history to tenants."
+                };
+            }
+
+            var paymentInfo = await GetPaymentInformationAsync(context.TenantId.Value);
+
+            return new ChatbotResponseDto
+            {
+                Message = paymentInfo + "\n\n📌 **Note**: For complete payment history and receipts, please visit the **Payments** section.",
+                QuickReplies = new List<QuickReplyDto>
+                {
+                    new() { Id = "payment_info", Text = "What's my rent amount?", Payload = "payment_info" },
+                    new() { Id = "property_info", Text = "View property details", Payload = "property_info" }
+                }
+            };
+        }
+
+        private async Task<ChatbotResponseDto> GenerateIssueViewResponse(ChatbotContextDto context)
+        {
+            if (context.UserType != "tenant" || !context.TenantId.HasValue)
+            {
+                return new ChatbotResponseDto
+                {
+                    Message = "I can only show issues to tenants."
+                };
+            }
+
+            var issuesInfo = await GetTenantIssuesAsync(context.TenantId.Value);
+
+            return new ChatbotResponseDto
+            {
+                Message = issuesInfo,
+                QuickReplies = new List<QuickReplyDto>
+                {
+                    new() { Id = "create_issue", Text = "Create new issue", Payload = "issue_creation" },
+                    new() { Id = "issue_status", Text = "Check issue status", Payload = "issue_status" }
+                }
+            };
+        }
+
+        private async Task<ChatbotResponseDto> GenerateIssueStatusResponse(ChatbotContextDto context)
+        {
+            if (context.UserType != "tenant" || !context.TenantId.HasValue)
+            {
+                return new ChatbotResponseDto
+                {
+                    Message = "I can only check issue status for tenants."
+                };
+            }
+
+            var issuesInfo = await GetTenantIssuesAsync(context.TenantId.Value);
+
+            return new ChatbotResponseDto
+            {
+                Message = issuesInfo,
+                QuickReplies = new List<QuickReplyDto>
+                {
+                    new() { Id = "create_issue", Text = "Create new issue", Payload = "issue_creation" },
+                    new() { Id = "view_issues", Text = "View all issues", Payload = "issue_view" }
+                }
+            };
+        }
+
+        private async Task<ChatbotResponseDto> GenerateDocumentInfoResponse(ChatbotContextDto context)
+        {
+            if (context.UserType != "tenant" || !context.TenantId.HasValue)
+            {
+                return new ChatbotResponseDto
+                {
+                    Message = "I can only provide document information to tenants."
+                };
+            }
+
+            var documentsInfo = await GetTenantDocumentsInfoAsync(context.TenantId.Value);
+
+            return new ChatbotResponseDto
+            {
+                Message = documentsInfo,
+                QuickReplies = new List<QuickReplyDto>
+                {
+                    new() { Id = "property_info", Text = "View property details", Payload = "property_info" },
+                    new() { Id = "view_issues", Text = "Check my issues", Payload = "issue_view" }
+                }
+            };
+        }
+
+        private async Task<ChatbotResponseDto> GenerateLandlordInfoResponse(ChatbotContextDto context)
+        {
+            if (context.UserType != "tenant" || !context.TenantId.HasValue)
+            {
+                return new ChatbotResponseDto
+                {
+                    Message = "I can only provide landlord information to tenants."
+                };
+            }
+
+            var landlordInfo = await GetLandlordContactInfoAsync(context.TenantId.Value);
+
+            return new ChatbotResponseDto
+            {
+                Message = landlordInfo,
+                QuickReplies = new List<QuickReplyDto>
+                {
+                    new() { Id = "view_issues", Text = "View my issues", Payload = "issue_view" },
+                    new() { Id = "property_info", Text = "Property information", Payload = "property_info" }
+                }
+            };
+        }
+
+        private async Task<ChatbotResponseDto> GenerateNavigationResponse(ChatbotContextDto context, string message)
+        {
+            var navigationInfo = await GetNavigationHelpAsync(context.UserType, message);
+
+            return new ChatbotResponseDto
+            {
+                Message = navigationInfo,
+                QuickReplies = GenerateQuickReplies(context, "help")
             };
         }
 
@@ -314,12 +469,14 @@ namespace RentConnect.Services.Implementations
                 "📋 **Tenancy Information** - Get details about your rent, lease terms, and agreement",
                 "🏠 **Property Details** - View your property address and information",
                 "💳 **Payment Information** - Check payment history and upcoming due dates",
-                "🔧 **Maintenance Issues** - Create and track repair requests",
-                "📄 **Documents** - Access your tenancy agreement and other documents",
-                "📞 **Contact Information** - Get landlord and support contact details"
+                "🎫 **My Issues** - View all your maintenance requests and their status",
+                "🔧 **Create Issue** - Report new maintenance or repair requests",
+                "📄 **Documents** - View and manage your documents",
+                "👤 **Landlord Contact** - Get landlord contact information",
+                "🧭 **Navigation** - Get help navigating the portal"
             } : new List<string>
             {
-                "🏘️ **Property Portfolio** - Overview of all your properties",
+                "🏘️ **Property Portfolio** - Overview of all your properties and tenants",
                 "👥 **Tenant Management** - View tenant information and status",
                 "💰 **Rent Collection** - Track payments and outstanding amounts",
                 "🔧 **Maintenance Requests** - Monitor and manage repair requests",
@@ -327,13 +484,36 @@ namespace RentConnect.Services.Implementations
                 "📋 **Property Management** - Add, edit, and manage properties"
             };
 
+            var exampleCommands = context.UserType == "tenant" ? new List<string>
+            {
+                "\"Show my property details\"",
+                "\"What's my rent amount?\"",
+                "\"View my issues\"",
+                "\"Show payment history\"",
+                "\"My documents\"",
+                "\"Contact landlord\""
+            } : new List<string>
+            {
+                "\"Show my properties\"",
+                "\"Tenant overview\"",
+                "\"Property performance\"",
+                "\"View maintenance requests\""
+            };
+
             return new ChatbotResponseDto
             {
-                Message = $"Here's what I can help you with:\n\n{string.Join("\n", capabilities)}\n\n💬 Just ask me anything in natural language, and I'll do my best to help!",
-                FollowUpQuestions = new List<string>
+                Message = $"Here's what I can help you with:\n\n{string.Join("\n", capabilities)}\n\n**📝 Example Commands:**\n{string.Join("\n", exampleCommands)}\n\n💬 Just ask me anything in natural language, and I'll do my best to help!",
+                QuickReplies = context.UserType == "tenant" ? new List<QuickReplyDto>
                 {
-                    "What would you like to know more about?",
-                    "Is there a specific task I can help you with?"
+                    new() { Id = "property_info", Text = "Show property details", Payload = "property_info" },
+                    new() { Id = "view_issues", Text = "View my issues", Payload = "issue_view" },
+                    new() { Id = "payment_info", Text = "Payment information", Payload = "payment_info" },
+                    new() { Id = "documents", Text = "My documents", Payload = "document_info" }
+                } : new List<QuickReplyDto>
+                {
+                    new() { Id = "properties", Text = "Show my properties", Payload = "properties" },
+                    new() { Id = "tenants", Text = "Tenant overview", Payload = "tenants" },
+                    new() { Id = "performance", Text = "Property performance", Payload = "performance" }
                 }
             };
         }
@@ -556,6 +736,194 @@ namespace RentConnect.Services.Implementations
             }
 
             return "I couldn't retrieve your insights at the moment. Please try again later.";
+        }
+
+        public async Task<string> GetTenantIssuesAsync(long tenantId)
+        {
+            try
+            {
+                var tickets = await _ticketService.GetTenantTicketsAsync(tenantId);
+                if ((tickets.Status == Models.Enums.ResultStatusType.Success || tickets.Status == Models.Enums.ResultStatusType.None) && tickets.Entity != null)
+                {
+                    var info = new StringBuilder();
+                    info.AppendLine($"🎫 **Your Issues & Maintenance Requests**\n");
+
+                    if (!tickets.Entity.Any())
+                    {
+                        info.AppendLine("You have no reported issues. Everything looks good! ✅");
+                        info.AppendLine("\nIf you experience any problems, feel free to report them anytime.");
+                    }
+                    else
+                    {
+                        var openTickets = tickets.Entity.Where(t => t.CurrentStatus != null &&
+                            (t.CurrentStatus.ToString() == "Open" || t.CurrentStatus.ToString() == "InProgress")).ToList();
+                        var closedTickets = tickets.Entity.Where(t => t.CurrentStatus != null &&
+                            (t.CurrentStatus.ToString() == "Closed" || t.CurrentStatus.ToString() == "Resolved")).ToList();
+
+                        info.AppendLine($"📊 **Summary**: {openTickets.Count} Open | {closedTickets.Count} Resolved | {tickets.Entity.Count()} Total\n");
+
+                        if (openTickets.Any())
+                        {
+                            info.AppendLine($"**🔴 Active Issues:**");
+                            foreach (var ticket in openTickets.Take(5))
+                            {
+                                var statusIcon = ticket.CurrentStatus?.ToString() == "InProgress" ? "🔧" : "🆕";
+                                var priorityIcon = ticket.Priority?.ToString() switch
+                                {
+                                    "Critical" => "🔴",
+                                    "High" => "🟠",
+                                    "Medium" => "🟡",
+                                    "Low" => "🟢",
+                                    _ => "⚪"
+                                };
+                                info.AppendLine($"{statusIcon} {priorityIcon} **#{ticket.Id}**: {ticket.Title ?? "Untitled"}");
+                                info.AppendLine($"   Status: {ticket.CurrentStatus} | Category: {ticket.Category}");
+                            }
+                            if (openTickets.Count > 5)
+                            {
+                                info.AppendLine($"   ...and {openTickets.Count - 5} more open issue(s)");
+                            }
+                        }
+
+                        if (closedTickets.Any())
+                        {
+                            info.AppendLine($"\n**✅ Recently Resolved:**");
+                            foreach (var ticket in closedTickets.Take(3))
+                            {
+                                info.AppendLine($"✓ **#{ticket.Id}**: {ticket.Title ?? "Untitled"}");
+                            }
+                        }
+                    }
+
+                    info.AppendLine($"\n💡 **Tip**: Type 'create issue' to report a new problem, or visit the Issues section for full details.");
+
+                    return info.ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting issues for tenant {TenantId}", tenantId);
+            }
+
+            return "I couldn't retrieve your issues at the moment. Please try again later.";
+        }
+
+        public async Task<string> GetTenantDocumentsInfoAsync(long tenantId)
+        {
+            try
+            {
+                var tenant = await _tenantService.GetTenantById(tenantId);
+                if ((tenant.Status == Models.Enums.ResultStatusType.Success || tenant.Status == Models.Enums.ResultStatusType.None) && tenant.Entity != null)
+                {
+                    var info = new StringBuilder();
+                    info.AppendLine($"📄 **Your Documents**\n");
+
+                    var documentCount = tenant.Entity.Documents?.Count() ?? 0;
+
+                    if (documentCount == 0)
+                    {
+                        info.AppendLine("You don't have any documents uploaded yet.");
+                        info.AppendLine("\n**📋 You can upload documents such as:**");
+                        info.AppendLine("• Identity Proof (Aadhar, PAN, Passport)");
+                        info.AppendLine("• Address Proof");
+                        info.AppendLine("• Employment Proof");
+                        info.AppendLine("• Bank Statements");
+                        info.AppendLine("• Previous Rental Agreement");
+                        info.AppendLine("• Other relevant documents");
+                    }
+                    else
+                    {
+                        info.AppendLine($"You have **{documentCount}** document(s) on file.");
+
+                        // Group by category if available
+                        var docsByCategory = tenant.Entity.Documents?
+                            .GroupBy(d => d.Category?.ToString() ?? "Other")
+                            .ToDictionary(g => g.Key, g => g.Count());
+
+                        if (docsByCategory != null && docsByCategory.Any())
+                        {
+                            info.AppendLine($"\n**📊 Document Categories:**");
+                            foreach (var category in docsByCategory)
+                            {
+                                info.AppendLine($"• {category.Key}: {category.Value} document(s)");
+                            }
+                        }
+                    }
+
+                    info.AppendLine($"\n📂 Visit the **Documents** section to view, upload, or download your files.");
+
+                    return info.ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting documents info for tenant {TenantId}", tenantId);
+            }
+
+            return "I couldn't retrieve your document information at the moment. Please try again later.";
+        }
+
+        public async Task<string> GetLandlordContactInfoAsync(long tenantId)
+        {
+            try
+            {
+                var tenant = await _tenantService.GetTenantById(tenantId);
+                if ((tenant.Status == Models.Enums.ResultStatusType.Success || tenant.Status == Models.Enums.ResultStatusType.None) && tenant.Entity != null)
+                {
+                    var info = new StringBuilder();
+                    info.AppendLine($"👤 **Landlord Contact Information**\n");
+
+                    // Get landlord information via property or landlordId
+                    if (tenant.Entity.LandlordId.HasValue)
+                    {
+                        info.AppendLine($"📋 **Landlord ID**: {tenant.Entity.LandlordId}");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(tenant.Entity.PropertyName))
+                    {
+                        info.AppendLine($"🏠 **Property**: {tenant.Entity.PropertyName}");
+                    }
+
+                    info.AppendLine($"\n💡 **For contacting your landlord or urgent issues**, please use the Issue Tracker feature for faster response and proper documentation.");
+                    info.AppendLine($"\n📧 You can also check your tenancy agreement for direct contact details.");
+
+                    return info.ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting landlord contact info for tenant {TenantId}", tenantId);
+            }
+
+            return "I couldn't retrieve landlord contact information at the moment. Please try again later.";
+        }
+
+        public async Task<string> GetNavigationHelpAsync(string userType, string page)
+        {
+            var info = new StringBuilder();
+            info.AppendLine($"🧭 **Navigation Guide**\n");
+
+            if (userType == "tenant")
+            {
+                info.AppendLine($"**📍 Available Sections:**");
+                info.AppendLine($"• **Portal** - Your dashboard and overview");
+                info.AppendLine($"• **Property** - View your property details");
+                info.AppendLine($"• **Documents** - Manage your documents");
+                info.AppendLine($"• **Payments** - View payment history and status");
+                info.AppendLine($"• **Issues** - Report and track maintenance issues");
+            }
+            else
+            {
+                info.AppendLine($"**📍 Available Sections:**");
+                info.AppendLine($"• **Dashboard** - Overview of your properties");
+                info.AppendLine($"• **Properties** - Manage your property listings");
+                info.AppendLine($"• **Tenants** - View and manage your tenants");
+                info.AppendLine($"• **Issue Tracker** - Track all maintenance requests");
+            }
+
+            info.AppendLine($"\n💡 **Tip**: Use the navigation menu to access any section.");
+
+            return await Task.FromResult(info.ToString());
         }
 
         // Placeholder methods for AI service integration
