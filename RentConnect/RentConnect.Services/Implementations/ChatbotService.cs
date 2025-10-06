@@ -63,11 +63,36 @@ namespace RentConnect.Services.Implementations
         {
             try
             {
+                // Validate inputs
+                if (string.IsNullOrWhiteSpace(message))
+                {
+                    return new ChatbotResponseDto
+                    {
+                        Message = "Please type a message to continue.",
+                        QuickReplies = GenerateQuickReplies(context, "help")
+                    };
+                }
+
+                if (context == null)
+                {
+                    context = new ChatbotContextDto { UserType = "tenant", UserId = 0 };
+                }
+
                 // Analyze intent
                 var (intent, confidence) = await AnalyzeIntentAsync(message, context);
 
                 // Generate response based on intent
                 var response = await GenerateResponseAsync(message, intent, context);
+
+                // Ensure response is not null
+                if (response == null)
+                {
+                    response = new ChatbotResponseDto
+                    {
+                        Message = "I'm not sure how to respond to that. Could you please rephrase your question?",
+                        QuickReplies = GenerateQuickReplies(context, "help")
+                    };
+                }
 
                 // Add contextual quick replies and actions
                 response.QuickReplies = GenerateQuickReplies(context, intent);
@@ -85,11 +110,11 @@ namespace RentConnect.Services.Implementations
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing chatbot message: {Message}", message);
+                _logger.LogError(ex, "Error processing chatbot message: {Message}. Error: {Error}", message, ex.Message);
                 return new ChatbotResponseDto
                 {
-                    Message = "I apologize, but I encountered an error processing your request. Please try again.",
-                    QuickReplies = GenerateQuickReplies(context, "help")
+                    Message = "I apologize, but I'm having trouble right now. The chatbot service is working with local responses (OpenAI is disabled). Please try asking about your property, rent, or maintenance issues.",
+                    QuickReplies = GenerateQuickReplies(context ?? new ChatbotContextDto { UserType = "tenant" }, "help")
                 };
             }
         }
@@ -130,31 +155,49 @@ namespace RentConnect.Services.Implementations
 
         private async Task<ChatbotResponseDto> GenerateResponseAsync(string message, string intent, ChatbotContextDto context)
         {
-            switch (intent)
+            try
             {
-                case "greeting":
-                    return GenerateGreetingResponse(context);
+                switch (intent)
+                {
+                    case "greeting":
+                        return GenerateGreetingResponse(context);
 
-                case "tenancy_info":
-                    return await GenerateTenancyInfoResponse(context);
+                    case "tenancy_info":
+                        return await GenerateTenancyInfoResponse(context);
 
-                case "property_info":
-                    return await GeneratePropertyInfoResponse(context);
+                    case "property_info":
+                        return await GeneratePropertyInfoResponse(context);
 
-                case "payment_info":
-                    return await GeneratePaymentInfoResponse(context);
+                    case "payment_info":
+                        return await GeneratePaymentInfoResponse(context);
 
-                case "issue_creation":
-                    return GenerateIssueCreationResponse(context);
+                    case "issue_creation":
+                        return GenerateIssueCreationResponse(context);
 
-                case "help":
-                    return GenerateHelpResponse(context);
+                    case "help":
+                        return GenerateHelpResponse(context);
 
-                case "goodbye":
-                    return GenerateGoodbyeResponse(context);
+                    case "goodbye":
+                        return GenerateGoodbyeResponse(context);
 
-                default:
-                    return await GenerateAIResponse(message, context);
+                    default:
+                        var aiResponse = await GenerateAIResponse(message, context);
+                        // If AI response is null, return fallback
+                        return aiResponse ?? new ChatbotResponseDto
+                        {
+                            Message = "I'm here to help! You can ask me about your property, rent payments, maintenance issues, or general information.",
+                            QuickReplies = GenerateQuickReplies(context, "help")
+                        };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating response for intent: {Intent}", intent);
+                return new ChatbotResponseDto
+                {
+                    Message = "I'm here to help! You can ask me about your property, rent payments, or maintenance issues.",
+                    QuickReplies = GenerateQuickReplies(context, "help")
+                };
             }
         }
 
