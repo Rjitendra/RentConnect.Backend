@@ -246,6 +246,7 @@ namespace RentConnect.Services.Implementations
                     OwnerType = d.OwnerType,
                     LandlordId = d.LandlordId,
                     PropertyId = d.PropertyId,
+                    TenantId=d.TenantId,
                     Category = d.Category,
                     Url = d.Url,
                     Name = d.Name,
@@ -255,7 +256,8 @@ namespace RentConnect.Services.Implementations
                     DocumentIdentifier = d.Id.ToString(),
                     UploadedOn = d.UploadedOn,
                     IsVerified = d.IsVerified,
-                    File = null
+                    File = null,
+                    UploadContext=d.UploadContext
 
                 }).ToList() ?? new List<Models.Dtos.Document.DocumentDto>()
             };

@@ -347,6 +347,21 @@ namespace RentConnect.API.Controller
             }
 
             var result = await _documentService.UploadDocuments(request);
+
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            if (result?.Entity != null)
+            {
+
+                if (result.Entity.Any())
+                {
+                    foreach (var doc in result.Entity)
+                    {
+                        doc.Url = $"{baseUrl}{doc.Url}";  // Full URL for Angular
+                        doc.DownloadUrl = null;          // Reset download link if needed
+                    }
+                }
+
+            }
             return ProcessResult(result);
         }
 

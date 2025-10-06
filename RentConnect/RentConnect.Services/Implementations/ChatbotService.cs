@@ -17,6 +17,13 @@ namespace RentConnect.Services.Implementations
         private readonly ITicketService _ticketService;
         private readonly HttpClient _httpClient;
 
+        // OpenAI Configuration
+        private readonly string? _openAiApiKey;
+        private readonly string _openAiModel;
+        private readonly int _maxTokens;
+        private readonly double _temperature;
+        private readonly bool _openAiEnabled;
+
         // Intent patterns for local processing
         private readonly Dictionary<string, List<string>> _intentPatterns = new()
         {
@@ -43,6 +50,13 @@ namespace RentConnect.Services.Implementations
             _propertyService = propertyService;
             _ticketService = ticketService;
             _httpClient = httpClient;
+
+            // Load OpenAI configuration
+            _openAiApiKey = _configuration["OpenAI:ApiKey"];
+            _openAiModel = _configuration["OpenAI:Model"] ?? "gpt-4";
+            _maxTokens = int.Parse(_configuration["OpenAI:MaxTokens"] ?? "500");
+            _temperature = double.Parse(_configuration["OpenAI:Temperature"] ?? "0.7");
+            _openAiEnabled = bool.Parse(_configuration["OpenAI:Enabled"] ?? "false");
         }
 
         public async Task<ChatbotResponseDto> ProcessMessageAsync(string message, ChatbotContextDto context)
@@ -518,16 +532,165 @@ namespace RentConnect.Services.Implementations
 
         private async Task<(string Intent, double Confidence)?> CallAIServiceForIntent(string message, ChatbotContextDto context)
         {
-            // TODO: Implement actual AI service call for intent detection
-            await Task.Delay(100);
+            if (!_openAiEnabled || string.IsNullOrWhiteSpace(_openAiApiKey))
+            {
+                _logger.LogDebug("OpenAI is disabled or API key is not configured");
+                return null;
+            }
+
+            try
+            {
+                var systemPrompt = "You are an intent classifier for a property rental management system. Classify the user's intent into one of these categories: greeting, tenancy_info, property_info, payment_info, issue_creation, help, goodbye. Respond with only the intent name and a confidence score (0-1) in this format: intent|confidence";
+
+                var response = await CallOpenAI(systemPrompt, message, 50);
+
+                if (!string.IsNullOrEmpty(response))
+                {
+                    var parts = response.Split('|');
+                    if (parts.Length == 2 && double.TryParse(parts[1], out var confidence))
+                    {
+                        return (parts[0].Trim(), confidence);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to call OpenAI for intent detection");
+            }
+
             return null;
         }
 
         private async Task<ChatbotResponseDto?> CallAIService(string message, ChatbotContextDto context)
         {
-            // TODO: Implement actual AI service call for response generation
-            await Task.Delay(100);
+            if (!_openAiEnabled || string.IsNullOrWhiteSpace(_openAiApiKey))
+            {
+                _logger.LogDebug("OpenAI is disabled or API key is not configured");
+                return null;
+            }
+
+            try
+            {
+                var systemPrompt = BuildContextualSystemPrompt(context);
+                var userContext = BuildUserContext(context);
+                var fullPrompt = $"{userContext}\n\nUser message: {message}";
+
+                var response = await CallOpenAI(systemPrompt, fullPrompt, _maxTokens);
+
+                if (!string.IsNullOrEmpty(response))
+                {
+                    return new ChatbotResponseDto
+                    {
+                        Message = response,
+                        QuickReplies = GenerateQuickReplies(context),
+                        Actions = GenerateActions(context)
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to call OpenAI for response generation");
+            }
+
             return null;
+        }
+
+        private async Task<string?> CallOpenAI(string systemPrompt, string userMessage, int maxTokens)
+        {
+            try
+            {
+                var request = new
+                {
+                    model = _openAiModel,
+                    messages = new[]
+                    {
+                        new { role = "system", content = systemPrompt },
+                        new { role = "user", content = userMessage }
+                    },
+                    max_tokens = maxTokens,
+                    temperature = _temperature
+                };
+
+                var requestJson = JsonSerializer.Serialize(request);
+                var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
+
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_openAiApiKey}");
+
+                var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseJson = await response.Content.ReadAsStringAsync();
+                    var jsonDoc = JsonDocument.Parse(responseJson);
+
+                    if (jsonDoc.RootElement.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+                    {
+                        var firstChoice = choices[0];
+                        if (firstChoice.TryGetProperty("message", out var messageObj) &&
+                            messageObj.TryGetProperty("content", out var contentProp))
+                        {
+                            return contentProp.GetString();
+                        }
+                    }
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogWarning("OpenAI API call failed: {StatusCode} - {Content}", response.StatusCode, errorContent);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling OpenAI API");
+            }
+
+            return null;
+        }
+
+        private string BuildContextualSystemPrompt(ChatbotContextDto context)
+        {
+            var basePrompt = "You are a helpful AI assistant for a property rental management system called RentConnect.";
+
+            if (context.UserType == "tenant")
+            {
+                basePrompt += " You are assisting a tenant with their tenancy-related queries. You can help with information about their property, rent payments, maintenance issues, and tenancy agreement. Be friendly, concise, and helpful. If asked to create a maintenance issue, acknowledge it but explain they can use the quick actions to do so.";
+
+                if (context.TenantInfo != null)
+                {
+                    basePrompt += $" The tenant's name is {context.TenantInfo.Name}. Their monthly rent is ₹{context.TenantInfo.RentAmount:N0} and rent is due on day {context.TenantInfo.RentDueDate} of each month. Property: {context.TenantInfo.PropertyName}.";
+                }
+            }
+            else
+            {
+                basePrompt += " You are assisting a landlord with their property management queries. You can help with information about their properties, tenants, rent collection, and maintenance requests. Be professional, concise, and provide actionable insights.";
+
+                if (context.LandlordInfo != null)
+                {
+                    basePrompt += $" The landlord manages {context.LandlordInfo.PropertyCount} properties.";
+                }
+            }
+
+            basePrompt += " Keep responses concise (under 200 words) and friendly. Use emojis sparingly for visual appeal.";
+
+            return basePrompt;
+        }
+
+        private string BuildUserContext(ChatbotContextDto context)
+        {
+            var contextInfo = $"User Type: {context.UserType}\n";
+
+            if (context.ConversationHistory != null && context.ConversationHistory.Any())
+            {
+                contextInfo += "Recent conversation:\n";
+                var recentMessages = context.ConversationHistory.TakeLast(5);
+                foreach (var msg in recentMessages)
+                {
+                    contextInfo += $"- {msg.Content}\n";
+                }
+            }
+
+            return contextInfo;
         }
 
         private string ExtractCategory(string message)
