@@ -45,6 +45,7 @@ namespace RentConnect.Models.Dtos.Chatbot
         public string Sender { get; set; } = string.Empty; // "user" or "bot"
         public DateTime Timestamp { get; set; }
         public string Type { get; set; } = "text";
+        public object? Metadata { get; set; }
     }
 
     public class QuickReplyDto
