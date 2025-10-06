@@ -13,6 +13,8 @@
             services.AddTransient<IUserService, UserService>();
             services.AddTransient<ITicketService, TicketService>();
             services.AddTransient<ILandlordService, LandlordService>();
+            services.AddTransient<IChatbotService, ChatbotService>();
+            services.AddHttpClient<IChatbotService, ChatbotService>();
             //services.AddTransient<IPaymentService, PaymentService>();
             //services.AddTransient<ITaskService, TaskService>();
         }
