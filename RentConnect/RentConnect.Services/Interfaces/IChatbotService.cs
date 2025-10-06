@@ -79,5 +79,12 @@ namespace RentConnect.Services.Interfaces
         /// <param name="endDate">End date for analytics</param>
         /// <returns>Analytics data</returns>
         Task<ChatbotAnalyticsDto> GetAnalyticsAsync(DateTime startDate, DateTime endDate);
+
+        /// <summary>
+        /// Process AI chat with conversation history
+        /// </summary>
+        /// <param name="request">AI chat request with message and context</param>
+        /// <returns>AI-generated response</returns>
+        Task<AIChatResponseDto> ProcessAIChatAsync(AIChatRequestDto request);
     }
 }

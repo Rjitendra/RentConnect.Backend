@@ -10,7 +10,9 @@
         Task<Result> DeleteDocument(long documentId);
         Task<Result<IEnumerable<DocumentDto>>> GetDocumentsByOwner(long ownerId, string ownerType);
 
-        Task<Result<IEnumerable<DocumentDto>>> GetPropertyImages(long? landlordId, long propertyId,long? tenantId);
+        Task<Result<IEnumerable<DocumentDto>>> GetPropertyImages(long? landlordId, long propertyId, long? tenantId);
+
+        Task<Result<IEnumerable<DocumentDto>>> GetDocumentsByProperty(long propertyId);
 
     }
 }

@@ -45,7 +45,7 @@
                         UploadedOn = DateTime.UtcNow.ToString("o"),
                         IsVerified = true,
                         DocumentIdentifier = null,
-                        UploadContext=doc.UploadContext
+                        UploadContext = doc.UploadContext
                     });
                 }
 
@@ -219,6 +219,43 @@
             catch (Exception ex)
             {
                 return Result<IEnumerable<DocumentDto>>.Failure($"Failed to get property images: {ex.Message}");
+            }
+        }
+
+        public async Task<Result<IEnumerable<DocumentDto>>> GetDocumentsByProperty(long propertyId)
+        {
+            try
+            {
+                // Get all documents related to this property (both landlord and tenant uploaded)
+                var documents = await _context.Document
+                    .Where(d => d.PropertyId == propertyId)
+                    .OrderByDescending(d => d.UploadedOn)
+                    .ToListAsync();
+
+                var documentDtos = documents.Select(d => new DocumentDto
+                {
+                    Id = d.Id,
+                    OwnerId = d.OwnerId,
+                    OwnerType = d.OwnerType,
+                    LandlordId = d.LandlordId,
+                    TenantId = d.TenantId,
+                    PropertyId = d.PropertyId,
+                    Category = d.Category,
+                    Url = d.Url,
+                    Name = d.Name,
+                    Size = d.Size,
+                    Type = d.Type,
+                    Description = d.Description,
+                    DocumentIdentifier = d.DocumentIdentifier,
+                    UploadedOn = d.UploadedOn,
+                    IsVerified = d.IsVerified
+                }).ToList();
+
+                return Result<IEnumerable<DocumentDto>>.Success(documentDtos);
+            }
+            catch (Exception ex)
+            {
+                return Result<IEnumerable<DocumentDto>>.Failure($"Failed to get property documents: {ex.Message}");
             }
         }
 

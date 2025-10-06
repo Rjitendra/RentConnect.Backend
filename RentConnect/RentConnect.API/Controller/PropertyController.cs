@@ -113,8 +113,8 @@ namespace RentConnect.API.Controller
                             PropertyId = propertyId,
                             TenantId = d.TenantId,
                             Url = null,
-                            Name = d?.File?.FileName??"",
-                            Size = d?.File?.Length??0,
+                            Name = d?.File?.FileName ?? "",
+                            Size = d?.File?.Length ?? 0,
                             Type = d?.File?.ContentType ?? "",
                             UploadedOn = DateTime.UtcNow.ToString("o"), // Keep consistent with current entity
                             IsVerified = true,
@@ -204,6 +204,42 @@ namespace RentConnect.API.Controller
         {
             var result = await _propertyService.DeleteProperty(id);
             return ProcessResult(result);
+        }
+
+        /// <summary>
+        /// Get all documents for a property (for chatbot and document viewing)
+        /// </summary>
+        /// <param name="propertyId">Property ID</param>
+        /// <returns>List of property documents</returns>
+        [HttpGet("{propertyId}/documents")]
+        public async Task<IActionResult> GetPropertyDocuments(long propertyId)
+        {
+            try
+            {
+                if (propertyId <= 0)
+                    return BadRequest("Invalid property ID");
+
+                var result = await _documentService.GetDocumentsByProperty(propertyId);
+
+                if (!result.IsSuccess)
+                    return ProcessResult(result);
+
+                // Convert relative paths to full URLs
+                var baseUrl = $"{Request.Scheme}://{Request.Host}";
+                if (result.Entity != null && result.Entity.Any())
+                {
+                    foreach (var doc in result.Entity)
+                    {
+                        doc.Url = $"{baseUrl}{doc.Url}";
+                    }
+                }
+
+                return ProcessResult(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Failed to get documents: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -419,11 +455,11 @@ namespace RentConnect.API.Controller
                     return BadRequest("Property does not belong to the specified landlord");
 
                 // Get property images
-                var imagesResult = await _documentService.GetPropertyImages(landlordId, propertyId,null);
+                var imagesResult = await _documentService.GetPropertyImages(landlordId, propertyId, null);
                 if (!imagesResult.IsSuccess)
                     return ProcessResult(imagesResult);
 
-               
+
 
                 // Convert relative paths to full URLs that can be accessed
                 var baseUrl = $"{Request.Scheme}://{Request.Host}";
@@ -452,8 +488,6 @@ namespace RentConnect.API.Controller
         /// <summary>
         /// Download a specific property image
         /// </summary>
-        /// <param name="landlordId">Landlord ID</param>
-        /// <param name="propertyId">Property ID</param>
         /// <param name="imageId">Image document ID</param>
         /// <returns>Image file download</returns>
         [HttpGet("image/{imageId}/download")]
@@ -465,7 +499,7 @@ namespace RentConnect.API.Controller
                 var imageResult = await _documentService.DownloadDocument(imageId);
                 if (!imageResult.IsSuccess)
                     return ProcessResult(imageResult);
-                    
+
 
                 var (fileBytes, fileName, contentType) = imageResult.Entity;
 

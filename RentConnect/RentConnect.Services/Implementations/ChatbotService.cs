@@ -940,6 +940,99 @@ namespace RentConnect.Services.Implementations
             await Task.Delay(100);
             return new ChatbotAnalyticsDto();
         }
+        public async Task<AIChatResponseDto> ProcessAIChatAsync(AIChatRequestDto request)
+        {
+            try
+            {
+                if (!_openAiEnabled || string.IsNullOrWhiteSpace(_openAiApiKey))
+                {
+                    _logger.LogWarning("OpenAI is disabled or not configured");
+                    return new AIChatResponseDto
+                    {
+                        Message = "AI chat is currently unavailable. Please use the quick options or contact support.",
+                        TokensUsed = 0,
+                        Model = "local-fallback"
+                    };
+                }
+
+                // Build system prompt
+                var systemPrompt = request.SystemPrompt ?? BuildContextualSystemPrompt(request.Context ?? new ChatbotContextDto());
+
+                // Build messages array for OpenAI
+                var messages = new List<object>
+                {
+                    new { role = "system", content = systemPrompt }
+                };
+
+                // Add conversation history
+                if (request.ConversationHistory != null && request.ConversationHistory.Any())
+                {
+                    foreach (var msg in request.ConversationHistory)
+                    {
+                        messages.Add(new { role = msg.Role.ToLower(), content = msg.Content });
+                    }
+                }
+
+                // Add current message
+                messages.Add(new { role = "user", content = request.Message });
+
+                // Call OpenAI
+                var requestObj = new
+                {
+                    model = _openAiModel,
+                    messages = messages.ToArray(),
+                    max_tokens = _maxTokens,
+                    temperature = _temperature
+                };
+
+                var requestJson = JsonSerializer.Serialize(requestObj);
+                var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
+
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_openAiApiKey}");
+
+                var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseJson = await response.Content.ReadAsStringAsync();
+                    var jsonDoc = JsonDocument.Parse(responseJson);
+
+                    if (jsonDoc.RootElement.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+                    {
+                        var firstChoice = choices[0];
+                        var messageContent = firstChoice.GetProperty("message").GetProperty("content").GetString();
+                        var tokensUsed = jsonDoc.RootElement.TryGetProperty("usage", out var usage)
+                            ? usage.GetProperty("total_tokens").GetInt32()
+                            : 0;
+
+                        return new AIChatResponseDto
+                        {
+                            Message = messageContent ?? "No response from AI",
+                            TokensUsed = tokensUsed,
+                            Model = _openAiModel
+                        };
+                    }
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogWarning("OpenAI API failed: {StatusCode} - {Content}", response.StatusCode, errorContent);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling OpenAI API for AI chat");
+            }
+
+            // Fallback response
+            return new AIChatResponseDto
+            {
+                Message = "I'm here to help! You can ask me about your property, rent, payments, or maintenance issues.",
+                TokensUsed = 0,
+                Model = "local-fallback"
+            };
+        }
 
         #region Private Helper Methods
 

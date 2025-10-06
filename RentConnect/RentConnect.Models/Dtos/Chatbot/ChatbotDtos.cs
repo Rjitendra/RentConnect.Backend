@@ -159,4 +159,33 @@ namespace RentConnect.Models.Dtos.Chatbot
         public List<string> CommonIssues { get; set; } = new();
         public int IssuesCreatedFromChat { get; set; }
     }
+
+    // AI Chat DTOs
+    public class AIChatRequestDto
+    {
+        [Required]
+        public string Message { get; set; } = string.Empty;
+
+        public List<ConversationMessageDto> ConversationHistory { get; set; } = new();
+
+        public ChatbotContextDto? Context { get; set; }
+
+        public string? SystemPrompt { get; set; }
+    }
+
+    public class ConversationMessageDto
+    {
+        [Required]
+        public string Role { get; set; } = string.Empty; // "user" | "assistant" | "system"
+
+        [Required]
+        public string Content { get; set; } = string.Empty;
+    }
+
+    public class AIChatResponseDto
+    {
+        public string Message { get; set; } = string.Empty;
+        public int? TokensUsed { get; set; }
+        public string? Model { get; set; }
+    }
 }

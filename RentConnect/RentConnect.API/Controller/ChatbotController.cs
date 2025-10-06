@@ -137,6 +137,40 @@ namespace RentConnect.API.Controller
         }
 
         /// <summary>
+        /// Process AI chat request with dynamic AI (OpenAI/Azure)
+        /// </summary>
+        /// <param name="request">AI chat request with message and conversation history</param>
+        /// <returns>AI-generated response</returns>
+        [HttpPost("ai-chat")]
+        public async Task<IActionResult> ProcessAIChatRequest([FromBody] AIChatRequestDto request)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.Message))
+                    return BadRequest("Message cannot be empty");
+
+                // Call AI service with conversation history
+                var aiResponse = await _chatbotService.ProcessAIChatAsync(request);
+
+                return Ok(Result<AIChatResponseDto>.Success(aiResponse, "AI response generated"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing AI chat: {Message}", request.Message);
+
+                // Fallback response
+                var fallbackResponse = new AIChatResponseDto
+                {
+                    Message = "I apologize, but I'm having trouble processing your request right now. Please try again or use the quick options below.",
+                    TokensUsed = 0,
+                    Model = "fallback"
+                };
+
+                return Ok(Result<AIChatResponseDto>.Success(fallbackResponse));
+            }
+        }
+
+        /// <summary>
         /// Create issue from chatbot conversation
         /// </summary>
         /// <param name="request">Issue creation request from chatbot</param>
