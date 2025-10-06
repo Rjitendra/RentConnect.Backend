@@ -453,7 +453,7 @@ namespace RentConnect.Services.Implementations
             try
             {
                 var tenant = await _tenantService.GetTenantById(tenantId);
-                if (tenant.Status == Models.Enums.ResultStatusType.Success && tenant.Entity != null)
+                if ((tenant.Status == Models.Enums.ResultStatusType.Success || tenant.Status == Models.Enums.ResultStatusType.None) && tenant.Entity != null)
                 {
                     var info = new StringBuilder();
                     info.AppendLine($"🏠 **Property Information**\n");
@@ -485,7 +485,7 @@ namespace RentConnect.Services.Implementations
             try
             {
                 var tenant = await _tenantService.GetTenantById(tenantId);
-                if (tenant.Status == Models.Enums.ResultStatusType.Success && tenant.Entity != null)
+                if ((tenant.Status == Models.Enums.ResultStatusType.Success || tenant.Status == Models.Enums.ResultStatusType.None) && tenant.Entity != null)
                 {
                     var info = new StringBuilder();
                     info.AppendLine($"💳 **Payment Information**\n");
@@ -525,11 +525,27 @@ namespace RentConnect.Services.Implementations
 
                 var info = new StringBuilder();
                 info.AppendLine($"📊 **Landlord Dashboard**\n");
-                info.AppendLine($"🏘️ **Total Properties**: {properties.Entity?.Count() ?? 0}");
-                info.AppendLine($"👥 **Total Tenants**: {tenantStats.Entity?.Total ?? 0}");
-                info.AppendLine($"🏠 **Occupied Properties**: {properties.Entity?.Count(p => p.Tenants?.Count > 0) ?? 0}");
+                info.AppendLine($"🏘️ **Total Properties**: {properties?.Entity?.Count() ?? 0}");
+                info.AppendLine($"👥 **Total Tenants**: {tenantStats?.Entity?.Total ?? 0}");
+                info.AppendLine($"🏠 **Occupied Properties**: {properties?.Entity?.Count(p => p.Tenants?.Count > 0) ?? 0}");
 
-                // TODO: Add more insights when payment and maintenance services are integrated
+                // List properties if available
+                if (properties?.Entity != null && properties.Entity.Any())
+                {
+                    info.AppendLine($"\n**Your Properties:**");
+                    foreach (var property in properties.Entity.Take(5))
+                    {
+                        var tenantCount = property.Tenants?.Count ?? 0;
+                        var status = tenantCount > 0 ? $"Occupied ({tenantCount} tenant{(tenantCount > 1 ? "s" : "")})" : "Vacant";
+                        info.AppendLine($"• {property.Title ?? "Untitled"} - {property.City ?? "Unknown"} - {status}");
+                    }
+
+                    if (properties.Entity.Count() > 5)
+                    {
+                        info.AppendLine($"• ...and {properties.Entity.Count() - 5} more");
+                    }
+                }
+
                 info.AppendLine($"\n📈 For detailed analytics, please visit the Dashboard section.");
 
                 return info.ToString();
