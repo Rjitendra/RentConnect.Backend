@@ -944,19 +944,23 @@ namespace RentConnect.Services.Implementations
         {
             try
             {
+                // First, get predefined/local response as knowledge base
+                var localKnowledge = await GetLocalKnowledgeBase(request.Message, request.Context ?? new ChatbotContextDto());
+
+                // If OpenAI is disabled, return enhanced local response
                 if (!_openAiEnabled || string.IsNullOrWhiteSpace(_openAiApiKey))
                 {
-                    _logger.LogWarning("OpenAI is disabled or not configured");
+                    _logger.LogInformation("OpenAI disabled - using local knowledge base only");
                     return new AIChatResponseDto
                     {
-                        Message = "AI chat is currently unavailable. Please use the quick options or contact support.",
+                        Message = localKnowledge ?? "I'm here to help! You can ask me about your property, rent, payments, or maintenance issues.",
                         TokensUsed = 0,
-                        Model = "local-fallback"
+                        Model = "local-knowledge-base"
                     };
                 }
 
-                // Build system prompt
-                var systemPrompt = request.SystemPrompt ?? BuildContextualSystemPrompt(request.Context ?? new ChatbotContextDto());
+                // Build enhanced system prompt that includes local knowledge base
+                var systemPrompt = BuildEnhancedSystemPrompt(request.SystemPrompt, request.Context ?? new ChatbotContextDto(), localKnowledge);
 
                 // Build messages array for OpenAI
                 var messages = new List<object>
@@ -976,7 +980,7 @@ namespace RentConnect.Services.Implementations
                 // Add current message
                 messages.Add(new { role = "user", content = request.Message });
 
-                // Call OpenAI
+                // Call OpenAI with enriched context
                 var requestObj = new
                 {
                     model = _openAiModel,
@@ -1017,24 +1021,139 @@ namespace RentConnect.Services.Implementations
                 else
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogWarning("OpenAI API failed: {StatusCode} - {Content}", response.StatusCode, errorContent);
+                    _logger.LogWarning("OpenAI API failed: {StatusCode} - {Content}. Falling back to local knowledge.", response.StatusCode, errorContent);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error calling OpenAI API for AI chat");
+                _logger.LogError(ex, "Error calling OpenAI API for AI chat - falling back to local knowledge");
             }
 
-            // Fallback response
+            // Fallback to local knowledge base if AI fails
+            var fallbackKnowledge = await GetLocalKnowledgeBase(request.Message, request.Context ?? new ChatbotContextDto());
             return new AIChatResponseDto
             {
-                Message = "I'm here to help! You can ask me about your property, rent, payments, or maintenance issues.",
+                Message = fallbackKnowledge ?? "I'm here to help! You can ask me about your property, rent, payments, or maintenance issues.",
                 TokensUsed = 0,
                 Model = "local-fallback"
             };
         }
 
         #region Private Helper Methods
+
+        /// <summary>
+        /// Get local knowledge base response with actual user data
+        /// This serves as: 1) Fallback when AI is disabled, 2) Context for AI to enhance
+        /// </summary>
+        private async Task<string?> GetLocalKnowledgeBase(string message, ChatbotContextDto context)
+        {
+            try
+            {
+                // Analyze intent to determine what knowledge to fetch
+                var (intent, confidence) = await AnalyzeIntentAsync(message, context);
+
+                // Fetch actual data based on intent and return structured information
+                switch (intent)
+                {
+                    case "tenancy_info":
+                    case "property_info":
+                        if (context.TenantId.HasValue)
+                        {
+                            return await GetPropertyInformationAsync(context.TenantId.Value);
+                        }
+                        else if (context.LandlordId.HasValue)
+                        {
+                            return await GetLandlordInsightsAsync(context.LandlordId.Value);
+                        }
+                        break;
+
+                    case "payment_info":
+                    case "payment_history":
+                        if (context.TenantId.HasValue)
+                        {
+                            return await GetPaymentInformationAsync(context.TenantId.Value);
+                        }
+                        break;
+
+                    case "issue_view":
+                    case "issue_status":
+                        if (context.TenantId.HasValue)
+                        {
+                            return await GetTenantIssuesAsync(context.TenantId.Value);
+                        }
+                        break;
+
+                    case "document_info":
+                        if (context.TenantId.HasValue)
+                        {
+                            return await GetTenantDocumentsInfoAsync(context.TenantId.Value);
+                        }
+                        break;
+
+                    case "landlord_info":
+                        if (context.TenantId.HasValue)
+                        {
+                            return await GetLandlordContactInfoAsync(context.TenantId.Value);
+                        }
+                        break;
+
+                    case "greeting":
+                        return GenerateGreetingResponse(context).Message;
+
+                    case "help":
+                        return GenerateHelpResponse(context).Message;
+
+                    case "issue_creation":
+                        return GenerateIssueCreationResponse(context).Message;
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error getting local knowledge base for message: {Message}", message);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Build enhanced system prompt that combines user's custom prompt, context, and local knowledge
+        /// </summary>
+        private string BuildEnhancedSystemPrompt(string? customPrompt, ChatbotContextDto context, string? localKnowledge)
+        {
+            var prompt = new StringBuilder();
+
+            // Start with custom prompt if provided, otherwise use base
+            if (!string.IsNullOrWhiteSpace(customPrompt))
+            {
+                prompt.AppendLine(customPrompt);
+            }
+            else
+            {
+                prompt.AppendLine(BuildContextualSystemPrompt(context));
+            }
+
+            // Add local knowledge base as reference data
+            if (!string.IsNullOrWhiteSpace(localKnowledge))
+            {
+                prompt.AppendLine("\n---KNOWLEDGE BASE (Use this data to answer questions)---");
+                prompt.AppendLine(localKnowledge);
+                prompt.AppendLine("---END KNOWLEDGE BASE---\n");
+            }
+
+            // Add instructions on how to use the knowledge base
+            prompt.AppendLine("\nIMPORTANT INSTRUCTIONS:");
+            prompt.AppendLine("1. Use the KNOWLEDGE BASE data above to provide accurate, personalized responses");
+            prompt.AppendLine("2. When the knowledge base contains specific data (rent amount, dates, etc.), use those exact values");
+            prompt.AppendLine("3. Make responses conversational and friendly while keeping them factual");
+            prompt.AppendLine("4. If asked about something not in the knowledge base, be helpful but don't fabricate data");
+            prompt.AppendLine("5. Suggest relevant actions users can take (view documents, create issue, check payments)");
+            prompt.AppendLine("6. Keep responses concise (under 150 words) unless detailed explanation is needed");
+
+            return prompt.ToString();
+        }
+
+       
 
         private (string intent, double confidence) AnalyzeContextualIntent(string message, ChatbotContextDto context)
         {
